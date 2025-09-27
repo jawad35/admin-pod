@@ -1,0 +1,57 @@
+Title: Super Admin Dashboard for Multi-Tenant POS SaaS
+Prompt:
+Create a Super Admin Dashbowel for a multi-tenant POS SaaS system using Next.js, Tailwind CSS, and Redux with nodejs apis and supabase 
+The dashboard is for the software owner to manage retailers (tenants), subscriptions, analytics, employees, expenses, referrals, and complaints. The UI must be modern, clean, responsive, with a sidebar and top bar. Use Tailwind cards, tables, and charts (Recharts/Chart.js).
+🔹 Pages & Features
+1. Authentication
+* Login and Register page (for Super Admin only).
+2. Dashboard (Main Overview)
+Show quick stats in cards:
+* Total Shops
+* Active vs Expired Subscriptions
+* Monthly Recurring Revenue
+* One-Time License Revenue
+* Storage Used (total vs available)
+* Total Employees
+* Office Expenses Total
+* Complaints (Active vs Resolved)
+* Shops Left (Churn Rate)
+* Quick buttons (Add Shop, Add Employee, Backup Data, Settings).
+3. Shop Management
+* Add Shop Form (fields: shop ID, name, owner, email, password, type [Retailer/Salon], city, location, image, subscription status, monthly fee, discount, permanent license flag, expiry date).
+* Shop List with filters and actions (edit, revoke, renew, backup to Excel).
+* Shop Detail → show subscription status, storage used, server requests, RAM usage, revenue.
+* Box: “Shops Expired & Need Payment” with renew/revoke buttons.
+4. Subscriptions & Licensing
+* Manage plans (monthly, yearly, permanent license).
+* Track referral discounts (20%).
+* Referral Management page.
+5. Analytics
+* Storage usage per shop (used vs limit).
+* Server requests per shop (today/week/month).
+* RAM/CPU usage charts.
+* Shop growth charts (active vs inactive shops).
+6. Employee Management (Admin’s Sales Team)
+* Add Employee (fields: name, age, CNIC, education, address, vehicle no, assigned area, salary, expenses, sales).
+* Employee List with performance tracking.
+7. Office Expenses
+* CRUD for office expenses (rent, electricity, internet, maintenance).
+* Show monthly totals.
+8. Support & Complaints
+* Complaint List (active, resolved, pending).
+* Assign complaint to employee.
+9. Maintenance
+* CRUD for maintenance tasks (software patches, shop fixes).
+* Status (open, in progress, done).
+10. Settings
+* Business info (logo, name, email, contact).
+* Backup & Restore (Excel download for Shops, Subscriptions, Employees, Expenses, Complaints).
+
+Audit Logs (who created/revoked shops, etc.). 🔹 UI Requirements
+Sidebar: Dashboard, Shops, Subscriptions, Analytics, Employees, Expenses, Referrals, Support, Maintenance, Settings.
+Top bar: Search,Profile dropdown.
+Cards: Rounded, soft shadows, Tailwind design.
+Tables: With filters, pagination, quick action buttons.
+Charts: Recharts/Chart.js (bar, line, pie).
+Dark + light mode. dont use stripe just manuall payemnt optn like jazzcash, easypaise,bacnketc, must make all dtabase and apis app must use real data, app is pakistan based so use pkr currency, dont need noftiocations, please make complete dont quit
+add import/export data feature as wel like shop, employee data
