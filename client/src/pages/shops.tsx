@@ -111,7 +111,10 @@ export default function Shops() {
     });
   };
 
-  const filteredShops = shops?.filter((shop: any) => {
+  // Provide safe defaults for shops
+  const safeShops = shops || [];
+  
+  const filteredShops = safeShops.filter((shop: any) => {
     if (filters.type && shop.type !== filters.type) return false;
     if (filters.status && shop.subscriptionStatus !== filters.status) return false;
     if (filters.city && shop.city !== filters.city) return false;

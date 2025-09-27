@@ -25,8 +25,20 @@ const getOidcConfig = memoize(
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
   const pgStore = connectPg(session);
+  
+  // Fix URL encoding issues with special characters in password
+  let databaseUrl = process.env.DATABASE_URL!;
+  if (databaseUrl.includes('#') && !databaseUrl.includes('%23')) {
+    // Parse the URL to safely encode only the password part
+    const urlParts = databaseUrl.match(/^(postgresql:\/\/[^:]+:)([^@]+)(@.+)$/);
+    if (urlParts) {
+      const [, prefix, password, suffix] = urlParts;
+      databaseUrl = prefix + encodeURIComponent(password) + suffix;
+    }
+  }
+  
   const sessionStore = new pgStore({
-    conString: process.env.DATABASE_URL,
+    conString: databaseUrl,
     createTableIfMissing: false,
     ttl: sessionTtl,
     tableName: "sessions",

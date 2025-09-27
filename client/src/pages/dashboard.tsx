@@ -24,6 +24,27 @@ import { formatCurrency } from "@/lib/currency";
 import RevenueChart from "@/components/charts/revenue-chart";
 import ShopGrowthChart from "@/components/charts/shop-growth-chart";
 
+// Type definitions
+interface DashboardStats {
+  totalShops: number;
+  activeShops: number;
+  expiredShops: number;
+  totalRevenue: string;
+  totalStorage: string;
+  totalEmployees: number;
+  totalExpenses: string;
+  activeComplaints: number;
+  churnRate: string;
+}
+
+interface Shop {
+  id: string;
+  name: string;
+  expiryDate: string;
+  monthlyFee: string;
+  [key: string]: any;
+}
+
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -43,15 +64,31 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
     retry: false,
   });
 
-  const { data: expiredShops, isLoading: expiredLoading } = useQuery({
+  const { data: expiredShops, isLoading: expiredLoading } = useQuery<Shop[]>({
     queryKey: ["/api/shops/expired"],
     retry: false,
   });
+
+  // Provide safe defaults for stats
+  const safeStats = stats || {
+    totalShops: 0,
+    activeShops: 0,
+    expiredShops: 0,
+    totalRevenue: "0",
+    totalStorage: "0",
+    totalEmployees: 0,
+    totalExpenses: "0",
+    activeComplaints: 0,
+    churnRate: "0"
+  };
+
+  // Provide safe defaults for expired shops
+  const safeExpiredShops = expiredShops || [];
 
   if (statsError && isUnauthorizedError(statsError as Error)) {
     toast({
@@ -112,7 +149,7 @@ export default function Dashboard() {
                   Total Shops
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-total-shops">
-                  {stats?.totalShops || 0}
+                  {safeStats.totalShops}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
                   <TrendingUp className="inline h-3 w-3 mr-1" />
@@ -134,10 +171,10 @@ export default function Dashboard() {
                   Active Subscriptions
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-active-subscriptions">
-                  {stats?.activeShops || 0}
+                  {safeStats.activeShops}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {stats?.expiredShops || 0} expired
+                  {safeStats.expiredShops} expired
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
@@ -155,7 +192,7 @@ export default function Dashboard() {
                   Monthly Revenue
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-monthly-revenue">
-                  {formatCurrency(stats?.totalRevenue || 0)}
+                  {formatCurrency(safeStats.totalRevenue)}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
                   <TrendingUp className="inline h-3 w-3 mr-1" />
@@ -177,7 +214,7 @@ export default function Dashboard() {
                   Storage Used
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-storage-used">
-                  {parseFloat(stats?.totalStorage || "0").toFixed(1)} GB
+                  {parseFloat(safeStats.totalStorage).toFixed(1)} GB
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   of 10 TB available
@@ -198,7 +235,7 @@ export default function Dashboard() {
                   Total Employees
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-total-employees">
-                  {stats?.totalEmployees || 0}
+                  {safeStats.totalEmployees}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Sales team members
@@ -219,7 +256,7 @@ export default function Dashboard() {
                   Office Expenses
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-office-expenses">
-                  {formatCurrency(stats?.totalExpenses || 0)}
+                  {formatCurrency(safeStats.totalExpenses)}
                 </p>
                 <p className="text-xs text-red-600 mt-1">
                   <TrendingUp className="inline h-3 w-3 mr-1" />
@@ -241,7 +278,7 @@ export default function Dashboard() {
                   Active Complaints
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-active-complaints">
-                  {stats?.activeComplaints || 0}
+                  {safeStats.activeComplaints}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   86 resolved this month
@@ -262,7 +299,7 @@ export default function Dashboard() {
                   Churn Rate
                 </p>
                 <p className="text-2xl font-bold" data-testid="stat-churn-rate">
-                  {stats?.churnRate || 0}%
+                  {safeStats.churnRate}%
                 </p>
                 <p className="text-xs text-green-600 mt-1">
                   <TrendingUp className="inline h-3 w-3 mr-1 rotate-180" />
@@ -312,8 +349,8 @@ export default function Dashboard() {
                 Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-20" />
                 ))
-              ) : expiredShops && expiredShops.length > 0 ? (
-                expiredShops.map((shop: any) => (
+              ) : safeExpiredShops.length > 0 ? (
+                safeExpiredShops.map((shop: any) => (
                   <div
                     key={shop.id}
                     className="flex items-center justify-between p-3 bg-destructive/10 rounded-md border border-destructive/20"
