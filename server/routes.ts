@@ -1,6 +1,8 @@
-import type { Express } from "express";
+import type { Express, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
+
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertShopSchema,
@@ -9,22 +11,349 @@ import {
   insertComplaintSchema,
   insertMaintenanceSchema,
   insertSubscriptionSchema,
+  loginSchema,
+  registerSchema,
+  shopUsersSchema,
 } from "@shared/schema";
 import { z } from "zod";
-
+import jwt from "jsonwebtoken";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
   // Auth routes
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  // app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
+  //   try {
+  //     const userId = req.user.id;
+  //     const user = await storage.getUser(userId);
+  //     res.json(user);
+  //   } catch (error) {
+  //     console.error("Error fetching user:", error);
+  //     res.status(500).json({ message: "Failed to fetch user" });
+  //   }
+  // });
+
+  // --- Login route ---
+  app.post("/api/login", async (req, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
+      const data = loginSchema.parse(req.body);
+
+      const user = await storage.getUserByEmail(data.email);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const isValid = await bcrypt.compare(data.password, user.passwordHash);
+      if (!isValid) return res.status(401).json({ message: "Invalid credentials" });
+
+      const token = jwt.sign(
+        { id: user.id, email: user.email },
+        process.env.JWT_SECRET!,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      );
+
+      res.json({ user, token });
+    } catch (err: any) {
+      console.error("Login error:", err);
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // --- Register route ---
+  app.post("/api/register", async (req, res) => {
+    try {
+      console.log(req.body)
+      const data = registerSchema.parse(req.body);
+
+      const existing = await storage.getUserByEmail(data.email);
+      if (existing) return res.status(400).json({ message: "Email already in use" });
+
+      const passwordHash = await bcrypt.hash(data.password, 10);
+      const user = await storage.createUser({
+        ...data,
+        passwordHash,
+      });
+
+      res.status(201).json(user);
+    } catch (err: any) {
+      console.error("Register error:", err);
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  // shop users
+  app.post("/api/register-shop-users", async (req, res) => {
+    try {
+      console.log("Registration shop user data:", req.body);
+
+      const data = shopUsersSchema.parse(req.body);
+
+      // Check if email already exists
+      const existing = await storage.getUserByEmail(data.email);
+      if (existing) {
+        return res.status(400).json({ message: "Email already in use" });
+      }
+
+      // Hash password
+      const passwordHash = await bcrypt.hash(data.password, 10);
+
+      // Create user
+      const user = await storage.createUser({
+        email: data.email,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        passwordHash,
+        role: data.role,
+        shopId: data.shopId,
+        mobileNo: data.mobileNo,
+        address: data.address,
+        agreeTerms: data.agreeTerms,
+        signedAgreementUrl: data.signedAgreementUrl,
+        isPermanent: data.isPermanent,
+      });
+
+      // Create subscription if plan is selected AND user is not permanent
+      if (data.planId && !data.isPermanent) {
+        const plan = await storage.getSubscriptionPlan(data.planId);
+        if (plan) {
+          const currentDate = new Date();
+          await storage.createUserSubscription({
+            userId: user.id,
+            planId: data.planId,
+            shopId: data.shopId,
+            amount: plan.price,
+            status: 'paid',
+            month: currentDate.getMonth() + 1,
+            year: currentDate.getFullYear(),
+            discount: "0",
+            notes: `Initial subscription - ${plan.name}`
+          });
+        }
+      }
+
+      // Handle referral
+      // Simply remove this block from your registration:
+      // Handle referral
+      // if (data.referrerId) {
+      //   await storage.createReferral({
+      //     referrerId: data.referrerId,
+      //     referredEmail: data.email,
+      //     referredName: `${data.firstName} ${data.lastName}`
+      //   });
+
+      //   // Increment referrer's referral count
+      //   await storage.incrementReferralCount(data.referrerId);
+      // }
+
+      // Log registration
+      await storage.createAuditLog({
+        userId: user.id,
+        action: "User Registered",
+        entity: "user",
+        entityId: user.id,
+        details: `User ${data.email} registered with role ${data.role}`,
+      });
+
+      res.status(201).json({
+        ...user,
+        passwordHash: undefined // Remove password hash from response
+      });
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({
+          message: "Validation failed",
+          errors: err.errors
+        });
+      }
+      res.status(400).json({ message: err.message });
+    }
+  });
+
+  app.get("/api/users", isAuthenticated, async (req: any, res) => {
+    try {
+      const users = await storage.getUsersWithShops();
+      res.json(users);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+  // Add to your routes
+  app.get("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.params.id);
+      if (!user) return res.status(404).json({ message: "User not found" });
       res.json(user);
     } catch (error) {
-      console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  app.put("/api/users/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      // Handle password update if provided
+      const updateData = { ...req.body };
+      if (updateData.password) {
+        updateData.passwordHash = await bcrypt.hash(updateData.password, 10);
+        delete updateData.password;
+      }
+
+      const user = await storage.updateUser(req.params.id, updateData);
+      res.json(user);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+  // Subscription Plans
+  // Make sure your API routes use the correct methods:
+  app.get("/api/subscription-plans", async (req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans(); // This should work now
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
+    }
+  });
+
+  app.post("/api/subscription-plans", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.createSubscriptionPlan(req.body);
+      res.status(201).json(plan);
+    } catch (error) {
+      console.error("Error creating subscription plan:", error);
+      res.status(500).json({ message: "Failed to create subscription plan" });
+    }
+  });
+
+  app.put("/api/subscription-plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const plan = await storage.updateSubscriptionPlan(req.params.id, req.body);
+      res.json(plan);
+    } catch (error) {
+      console.error("Error updating subscription plan:", error);
+      res.status(500).json({ message: "Failed to update subscription plan" });
+    }
+  });
+  // User Subscriptions
+  app.get("/api/users/:userId/subscriptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptions = await storage.getUserSubscriptions(req.params.userId);
+      res.json(subscriptions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch user subscriptions" });
+    }
+  });
+
+  app.get("/api/shops/:shopId/subscriptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const subscriptions = await storage.getShopSubscriptions(req.params.shopId);
+      res.json(subscriptions);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch shop subscriptions" });
+    }
+  });
+
+  app.post("/api/shops/:shopId/subscriptions", isAuthenticated, async (req: any, res) => {
+    try {
+      const { shopId } = req.params;
+
+      const subscription = await storage.createUserSubscription({
+        ...req.body,
+        shopId: shopId,
+        // Remove userId completely since it's not in schema
+      });
+
+      res.status(201).json(subscription);
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ message: "Failed to create subscription" });
+    }
+  });
+
+  // DELETE /api/subscriptions/:id
+  app.delete("/api/subscriptions/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      await storage.deleteUserSubscription(req.params.id);
+      res.json({ message: "Subscription deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete subscription" });
+    }
+  });
+
+  // PUT /api/subscriptions/:id
+  app.put("/api/subscriptions/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const subscription = await storage.updateUserSubscription(req.params.id, req.body);
+      res.json(subscription);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update subscription" });
+    }
+  });
+
+  // app.put("/api/user-subscriptions/:id", isAuthenticated, async (req: any, res) => {
+  //   try {
+  //     const subscription = await storage.updateUserSubscription(req.params.id, req.body);
+  //     res.json(subscription);
+  //   } catch (error) {
+  //     res.status(500).json({ message: "Failed to update subscription" });
+  //   }
+  // });
+
+  // Subscription History with filters
+  app.get("/api/subscription-history", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, shopId, month, year } = req.query;
+      const filters = {
+        userId,
+        shopId,
+        month: month ? parseInt(month) : undefined,
+        year: year ? parseInt(year) : undefined,
+      };
+
+      const history = await storage.getSubscriptionHistory(filters);
+      res.json(history);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch subscription history" });
+    }
+  });
+
+  // Mark current month subscription
+  app.post("/api/users/:userId/mark-subscription", isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId } = req.params;
+      const { planId, amount, discount = 0, notes, shopId } = req.body;
+
+      const user = await storage.getUser(userId);
+      if (user?.isPermanent) {
+        return res.status(400).json({ message: "Permanent users don't require subscriptions" });
+      }
+
+      const currentDate = new Date();
+      const subscription = await storage.createUserSubscription({
+        userId,
+        planId,
+        shopId: shopId || user?.shopId,
+        amount,
+        status: 'paid',
+        month: currentDate.getMonth() + 1,
+        year: currentDate.getFullYear(),
+        discount,
+        notes: notes || `Monthly subscription for ${currentDate.toLocaleString('default', { month: 'long' })} ${currentDate.getFullYear()}`
+      });
+
+      res.status(201).json(subscription);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to mark subscription" });
+    }
+  });
+
+  // Additional API routes
+  app.get("/api/subscription-plans", async (req, res) => {
+    try {
+      const plans = await storage.getSubscriptionPlans();
+      res.json(plans);
+    } catch (error) {
+      console.error("Error fetching subscription plans:", error);
+      res.status(500).json({ message: "Failed to fetch subscription plans" });
     }
   });
 
@@ -40,6 +369,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Shop routes
+
+  app.post("/api/shop-login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+
+      console.log(req.body)
+
+      // Basic validation
+      if (!email || !password) {
+        return res.status(400).json({ message: "Email and password are required" });
+      }
+
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: "User not found with this email" });
+      }
+
+      // Check if user is active
+      if (!user.isActive) {
+        return res.status(401).json({ message: "Account is deactivated" });
+      }
+
+      // Compare passwords (using passwordHash since you're storing hashed passwords)
+      const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+      if (!isPasswordValid) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Get shop data if user has a shopId
+      let shopData = null;
+      if (user.shopId) {
+        shopData = await storage.getShop(user.shopId);
+      }
+
+      // Create JWT token
+      const token = jwt.sign(
+        {
+          id: user.id,
+          email: user.email,
+          shopId: user.shopId,
+          role: user.role,
+          type: "user"
+        },
+        process.env.JWT_SECRET!,
+        { expiresIn: process.env.JWT_EXPIRES_IN || "1d" }
+      );
+
+      // Return user details (excluding passwordHash) and shop data
+      const { passwordHash, ...userWithoutPassword } = user;
+
+      res.json({
+        success: true,
+        user: userWithoutPassword,
+        shop: shopData, // Include shop data
+        token
+      });
+
+    } catch (err: any) {
+      console.error("Shop login error:", err);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/shops", isAuthenticated, async (req, res) => {
     try {
       const shops = await storage.getShops();
@@ -75,12 +468,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/shops", isAuthenticated, async (req: any, res) => {
     try {
-      const shopData = insertShopSchema.parse(req.body);
+      console.log("Received data:", req.body);
+
+      // Ensure expiryDate is a proper Date object and not null
+      const shopData = { ...req.body };
+
+      if (!shopData.expiryDate || !(shopData.expiryDate instanceof Date)) {
+        // Provide a default date if not provided or invalid
+        const defaultDate = new Date();
+        defaultDate.setFullYear(defaultDate.getFullYear() + 1); // 1 year from now
+        shopData.expiryDate = defaultDate;
+      }
+
+      // Ensure it's a proper Date instance that Drizzle can handle
+      if (shopData.expiryDate && !(shopData.expiryDate instanceof Date)) {
+        shopData.expiryDate = new Date(shopData.expiryDate);
+      }
+
+      console.log("Processed data for DB:", shopData);
+
       const shop = await storage.createShop(shopData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Shop Created",
         entity: "shop",
         entityId: shop.id,
@@ -89,22 +500,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.status(201).json(shop);
     } catch (error) {
+      console.error("Error creating shop:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid shop data", errors: error.errors });
       }
-      console.error("Error creating shop:", error);
       res.status(500).json({ message: "Failed to create shop" });
     }
   });
 
+  const safeShopSchema = insertShopSchema
+    .partial()
+    .extend({
+      expiryDate: z.preprocess(
+        (val) => {
+          if (typeof val === "string" && !isNaN(Date.parse(val))) {
+            return new Date(val);
+          }
+          return val; // leave as is if already Date or undefined
+        },
+        z.date().optional()
+      ),
+    });
+
   app.put("/api/shops/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const shopData = insertShopSchema.partial().parse(req.body);
+      console.log("data", req.body);
+
+      // ✅ Parse with safe schema
+      const shopData = safeShopSchema.parse(req.body);
+
       const shop = await storage.updateShop(req.params.id, shopData);
-      
-      // Log audit
+
+      // ✅ Create audit log
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Shop Updated",
         entity: "shop",
         entityId: shop.id,
@@ -114,7 +543,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(shop);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid shop data", errors: error.errors });
+        return res
+          .status(400)
+          .json({ message: "Invalid shop data", errors: error.errors });
       }
       console.error("Error updating shop:", error);
       res.status(500).json({ message: "Failed to update shop" });
@@ -124,10 +555,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/shops/:id", isAuthenticated, async (req: any, res) => {
     try {
       await storage.deleteShop(req.params.id);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Shop Deleted",
         entity: "shop",
         entityId: req.params.id,
@@ -156,10 +587,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const employeeData = insertEmployeeSchema.parse(req.body);
       const employee = await storage.createEmployee(employeeData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Employee Added",
         entity: "employee",
         entityId: employee.id,
@@ -180,10 +611,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const employeeData = insertEmployeeSchema.partial().parse(req.body);
       const employee = await storage.updateEmployee(req.params.id, employeeData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Employee Updated",
         entity: "employee",
         entityId: employee.id,
@@ -203,10 +634,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/employees/:id", isAuthenticated, async (req: any, res) => {
     try {
       await storage.deleteEmployee(req.params.id);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Employee Deleted",
         entity: "employee",
         entityId: req.params.id,
@@ -235,10 +666,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const subscriptionData = insertSubscriptionSchema.parse(req.body);
       const subscription = await storage.createSubscription(subscriptionData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Subscription Created",
         entity: "subscription",
         entityId: subscription.id,
@@ -256,7 +687,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Expense routes
-  app.get("/api/expenses", isAuthenticated, async (req, res) => {
+  app.get("/api/expenses", async (req, res) => {
+    console.log('exp123')
     try {
       const expenses = await storage.getExpenses();
       res.json(expenses);
@@ -266,29 +698,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/expenses", isAuthenticated, async (req: any, res) => {
+  app.post("/api/expenses", async (req, res) => {
     try {
+      console.log("Incoming body:", req.body);
+
       const expenseData = insertExpenseSchema.parse(req.body);
       const expense = await storage.createExpense(expenseData);
-      
-      // Log audit
-      await storage.createAuditLog({
-        userId: req.user.claims.sub,
-        action: "Expense Created",
-        entity: "expense",
-        entityId: expense.id,
-        details: `Added expense "${expense.title}" - ₨ ${expense.amount}`,
-      });
 
       res.status(201).json(expense);
     } catch (error) {
       if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Invalid expense data", errors: error.errors });
+        console.error("Validation errors:", JSON.stringify(error.errors, null, 2));
+        return res
+          .status(400)
+          .json({ message: "Invalid expense data", errors: error.errors });
       }
       console.error("Error creating expense:", error);
       res.status(500).json({ message: "Failed to create expense" });
     }
   });
+
+
+
+
 
   // Complaint routes
   app.get("/api/complaints", isAuthenticated, async (req, res) => {
@@ -305,10 +737,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const complaintData = insertComplaintSchema.parse(req.body);
       const complaint = await storage.createComplaint(complaintData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Complaint Created",
         entity: "complaint",
         entityId: complaint.id,
@@ -340,10 +772,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const maintenanceData = insertMaintenanceSchema.parse(req.body);
       const maintenance = await storage.createMaintenance(maintenanceData);
-      
+
       // Log audit
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: req.user.id,
         action: "Maintenance Task Created",
         entity: "maintenance",
         entityId: maintenance.id,

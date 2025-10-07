@@ -1,94 +1,213 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Store, BarChart3, Users, Settings } from "lucide-react";
+"use client";
 
-export default function Landing() {
-  const handleLogin = () => {
-    window.location.href = "/api/login";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { queryClient } from "@/lib/queryClient";
+
+type AuthMode = "login" | "signup";
+
+export default function AuthPage() {
+  const [mode, setMode] = useState<AuthMode>("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    // Validation for signup
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (mode === "signup" && password.length < 6) {
+      setError("Password must be at least 6 characters long");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const endpoint = mode === "login" ? "/api/login" : "/api/register";
+      const data = mode === "login" ? { email, password } : { email, password, firstName, lastName };
+
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const {token}= await res.json()
+        localStorage.setItem("token",token);
+        window.location.href = "/";
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      } else {
+        const data = await res.json();
+        setError(data.message || `Failed to ${mode}`);
+      }
+    } catch {
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchMode = () => {
+    setMode(mode === "login" ? "signup" : "login");
+    setError("");
+    setEmail("");
+    setPassword("");
+    setLastName("")
+    setFirstName("")
+    setConfirmPassword("");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <div className="flex items-center justify-center mb-6">
-            <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center">
-              <Store className="h-8 w-8 text-primary-foreground" />
-            </div>
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800">
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-md p-8 bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-gray-700"
+      >
+        <h1 className="text-3xl font-bold text-center text-white mb-2">
+          {mode === "login" ? "Welcome Back" : "Create Account"}
+        </h1>
+        <p className="text-center text-gray-300 mb-6">
+          {mode === "login"
+            ? "Sign in with your account to continue"
+            : "Create a new account to get started"}
+        </p>
+
+        {error && (
+          <div className="mb-4 text-sm text-red-500 bg-red-100/20 p-2 rounded">
+            {error}
           </div>
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100 mb-4">
-            POS SaaS Admin Dashboard
-          </h1>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl mx-auto">
-            Comprehensive management platform for multi-tenant Point of Sale system.
-            Manage shops, subscriptions, employees, and analytics from one place.
-          </p>
-          <Button 
-            onClick={handleLogin}
-            size="lg"
-            className="text-lg px-8 py-3"
-            data-testid="button-login"
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {
+            mode === "signup" && <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-300">
+                First Name
+              </label>
+              <input
+                id="firstName"
+                type="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                required
+                className="mt-1 block w-full rounded-lg border-gray-600 bg-gray-800 text-white placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 border"
+                placeholder="first name"
+              />
+            </div>
+          }
+
+          {
+            mode === "signup" && <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-300">
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                type="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                required
+                className="mt-1 block w-full rounded-lg border-gray-600 bg-gray-800 text-white placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 border"
+                placeholder="last name"
+              />
+            </div>
+          }
+
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300">
+              Email
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="mt-1 block w-full rounded-lg border-gray-600 bg-gray-800 text-white placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 border"
+              placeholder="you@example.com"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="mt-1 block w-full rounded-lg border-gray-600 bg-gray-800 text-white placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 border"
+              placeholder="••••••••"
+              minLength={mode === "signup" ? 6 : undefined}
+            />
+          </div>
+
+          {mode === "signup" && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-300">
+                Confirm Password
+              </label>
+              <input
+                id="confirmPassword"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="mt-1 block w-full rounded-lg border-gray-600 bg-gray-800 text-white placeholder-gray-400 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 p-3 border"
+                placeholder="••••••••"
+                minLength={6}
+              />
+            </motion.div>
+          )}
+
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            type="submit"
+            disabled={loading}
+            className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition disabled:opacity-50"
           >
-            Login as Super Admin
-          </Button>
-        </div>
+            {loading
+              ? (mode === "login" ? "Signing in..." : "Creating account...")
+              : (mode === "login" ? "Login" : "Sign Up")
+            }
+          </motion.button>
+        </form>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          <Card className="text-center">
-            <CardHeader>
-              <Store className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <CardTitle>Shop Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Manage all retail shops and salons with complete control over subscriptions and licensing.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center">
-            <CardHeader>
-              <BarChart3 className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <CardTitle>Analytics</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Real-time analytics on revenue, storage usage, server performance, and growth metrics.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center">
-            <CardHeader>
-              <Users className="h-12 w-12 text-purple-600 mx-auto mb-4" />
-              <CardTitle>Employee Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Track sales team performance, manage salaries, and monitor assigned areas.
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="text-center">
-            <CardHeader>
-              <Settings className="h-12 w-12 text-orange-600 mx-auto mb-4" />
-              <CardTitle>System Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600 dark:text-gray-300">
-                Handle complaints, maintenance tasks, office expenses, and system backups.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="text-center">
-          <p className="text-gray-500 dark:text-gray-400">
-            Secure authentication required • Pakistan-based business solution
+        <div className="mt-6 text-center">
+          <p className="text-gray-300">
+            {mode === "login" ? "Don't have an account?" : "Already have an account?"}{" "}
+            <button
+              type="button"
+              onClick={switchMode}
+              className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            >
+              {mode === "login" ? "Sign up" : "Login"}
+            </button>
           </p>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 }

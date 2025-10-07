@@ -15,20 +15,42 @@ import { Label } from "@/components/ui/label";
 import { Plus, Download, Upload } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
+interface Shop {
+  id: string;
+  shopId: string;
+  name: string;
+  owner: string;
+  email: string;
+  type: string;
+  city: string;
+  location: string;
+  subscriptionStatus: string;
+  monthlyFee: string;
+  discount: string;
+  expiryDate: string;
+  totalRevenue: string;
+  imageUrl?: string;
+  permanentLicense?: boolean;
+  storageUsed?: string;
+  storageLimit?: string;
+  referral?: string;
+}
+
 export default function Shops() {
   const { toast } = useToast();
-  const { isAuthenticated, isLoading } = useAuth();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingShop, setEditingShop] = useState<Shop | null>(null);
   const [filters, setFilters] = useState({
-    type: "",
-    status: "",
-    city: "",
+    type: "all",
+    status: "all",
+    city: "all",
     search: "",
   });
 
   // Redirect to home if not authenticated
   useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated) {
       toast({
         title: "Unauthorized",
         description: "You are logged out. Logging in again...",
@@ -39,7 +61,7 @@ export default function Shops() {
       }, 500);
       return;
     }
-  }, [isAuthenticated, isLoading, toast]);
+  }, [isAuthenticated, authLoading, toast]);
 
   const { data: shops, isLoading: shopsLoading, error } = useQuery({
     queryKey: ["/api/shops"],
@@ -76,6 +98,45 @@ export default function Shops() {
       });
     },
   });
+
+  const handleEditShop = (shop: Shop) => {
+    setEditingShop(shop);
+    setIsDialogOpen(true);
+  };
+
+  const handleViewShop = (shop: Shop) => {
+    // TODO: Implement view shop details
+    toast({
+      title: "View Shop",
+      description: `Viewing details for ${shop.name}`,
+    });
+  };
+
+  const handleRenewShop = (shop: Shop) => {
+    // TODO: Implement renew subscription
+    toast({
+      title: "Renew Subscription",
+      description: `Renewing subscription for ${shop.name}`,
+    });
+  };
+
+  const handleAddShop = () => {
+    setEditingShop(null);
+    setIsDialogOpen(true);
+  };
+
+  const handleFormSuccess = () => {
+    setIsDialogOpen(false);
+    setEditingShop(null);
+    queryClient.invalidateQueries({ queryKey: ["/api/shops"] });
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setEditingShop(null);
+    }
+  };
 
   if (error && isUnauthorizedError(error as Error)) {
     toast({
@@ -115,9 +176,9 @@ export default function Shops() {
   const safeShops = shops || [];
   
   const filteredShops = safeShops.filter((shop: any) => {
-    if (filters.type && shop.type !== filters.type) return false;
-    if (filters.status && shop.subscriptionStatus !== filters.status) return false;
-    if (filters.city && shop.city !== filters.city) return false;
+    if (filters.type !== "all" && shop.type !== filters.type) return false;
+    if (filters.status !== "all" && shop.subscriptionStatus !== filters.status) return false;
+    if (filters.city !== "all" && shop.city !== filters.city) return false;
     if (filters.search && !shop.name.toLowerCase().includes(filters.search.toLowerCase())) return false;
     return true;
   });
@@ -129,18 +190,23 @@ export default function Shops() {
           Shop Management
         </h1>
         <div className="flex space-x-3">
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-shop">
+              <Button onClick={handleAddShop} data-testid="button-add-shop">
                 <Plus className="mr-2 h-4 w-4" />
                 Add Shop
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Add New Shop</DialogTitle>
+                <DialogTitle>
+                  {editingShop ? `Edit ${editingShop.name}` : "Add New Shop"}
+                </DialogTitle>
               </DialogHeader>
-              <ShopForm onSuccess={() => setIsAddDialogOpen(false)} />
+              <ShopForm 
+                shop={editingShop || undefined}
+                onSuccess={handleFormSuccess} 
+              />
             </DialogContent>
           </Dialog>
           <Button variant="outline" onClick={handleExportData} data-testid="button-export-excel">
@@ -168,7 +234,7 @@ export default function Shops() {
                   <SelectValue placeholder="All Types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="retailer">Retailer</SelectItem>
                   <SelectItem value="salon">Salon</SelectItem>
                 </SelectContent>
@@ -184,7 +250,7 @@ export default function Shops() {
                   <SelectValue placeholder="All Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="active">Active</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
                   <SelectItem value="suspended">Suspended</SelectItem>
@@ -201,7 +267,7 @@ export default function Shops() {
                   <SelectValue placeholder="All Cities" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Cities</SelectItem>
+                  <SelectItem value="all">All Cities</SelectItem>
                   <SelectItem value="Karachi">Karachi</SelectItem>
                   <SelectItem value="Lahore">Lahore</SelectItem>
                   <SelectItem value="Islamabad">Islamabad</SelectItem>
@@ -229,6 +295,9 @@ export default function Shops() {
         shops={filteredShops || []}
         isLoading={shopsLoading}
         onDelete={handleDeleteShop}
+        onEdit={handleEditShop}
+        onView={handleViewShop}
+        onRenew={handleRenewShop}
       />
     </div>
   );

@@ -34,9 +34,19 @@ interface ShopsTableProps {
   shops: Shop[];
   isLoading: boolean;
   onDelete: (shopId: string) => void;
+  onEdit: (shop: Shop) => void;
+  onView: (shop: Shop) => void;
+  onRenew: (shop: Shop) => void;
 }
 
-export default function ShopsTable({ shops, isLoading, onDelete }: ShopsTableProps) {
+export default function ShopsTable({ 
+  shops, 
+  isLoading, 
+  onDelete, 
+  onEdit, 
+  onView, 
+  onRenew 
+}: ShopsTableProps) {
   if (isLoading) {
     return (
       <Card className="overflow-hidden">
@@ -153,6 +163,7 @@ export default function ShopsTable({ shops, isLoading, onDelete }: ShopsTablePro
                       <Button
                         size="sm"
                         variant="ghost"
+                        onClick={() => onView(shop)}
                         data-testid={`button-view-${shop.id}`}
                       >
                         <Eye className="h-4 w-4" />
@@ -160,6 +171,7 @@ export default function ShopsTable({ shops, isLoading, onDelete }: ShopsTablePro
                       <Button
                         size="sm"
                         variant="ghost"
+                        onClick={() => onEdit(shop)}
                         data-testid={`button-edit-${shop.id}`}
                       >
                         <Edit className="h-4 w-4" />
@@ -167,6 +179,7 @@ export default function ShopsTable({ shops, isLoading, onDelete }: ShopsTablePro
                       <Button
                         size="sm"
                         variant="ghost"
+                        onClick={() => onRenew(shop)}
                         data-testid={`button-renew-${shop.id}`}
                       >
                         <RefreshCw className="h-4 w-4" />

@@ -54,4 +54,4 @@ Cards: Rounded, soft shadows, Tailwind design.
 Tables: With filters, pagination, quick action buttons.
 Charts: Recharts/Chart.js (bar, line, pie).
 Dark + light mode. dont use stripe just manuall payemnt optn like jazzcash, easypaise,bacnketc, must make all dtabase and apis app must use real data, app is pakistan based so use pkr currency, dont need noftiocations, please make complete dont quit
-add import/export data feature as wel like shop, employee data
+add import/export data feature as wel like shop, employee data/Users/macbookpro/Downloads/SuperAdminDashboard.zip/Users/macbookpro/Downloads/SuperAdminDashboard.zip

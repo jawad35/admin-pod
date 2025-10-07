@@ -48,6 +48,7 @@ interface Shop {
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  console.log(isAuthenticated, 'hey123')
 
   // Redirect to home if not authenticated
   useEffect(() => {

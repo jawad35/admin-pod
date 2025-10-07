@@ -13,8 +13,12 @@ import { insertExpenseSchema } from "@shared/schema";
 import { z } from "zod";
 
 const expenseFormSchema = insertExpenseSchema.extend({
-  date: z.string().min(1, "Date is required"),
+  date: z.string().min(1, "Date is required"), // stays string for input
+  amount: z.union([z.string(), z.number()]).refine((val) => !isNaN(Number(val)), {
+    message: "Amount must be a number",
+  }),
 });
+
 
 type ExpenseFormData = z.infer<typeof expenseFormSchema>;
 
@@ -53,7 +57,8 @@ export default function ExpenseForm({ onSuccess }: ExpenseFormProps) {
     mutationFn: async (data: ExpenseFormData) => {
       const response = await apiRequest("POST", "/api/expenses", {
         ...data,
-        date: new Date(data.date).toISOString(),
+        amount: Number(data.amount), // ensure numeric
+        date: new Date(data.date).toISOString().split("T")[0], // YYYY-MM-DD only
       });
       return response.json();
     },

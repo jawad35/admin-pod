@@ -26,8 +26,15 @@ export default function TopBar({ onMenuClick, isMobile }: TopBarProps) {
     setMounted(true);
   }, []);
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+    const res = await fetch("/api/logout", {
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+    });
+    if (res.ok) {
+      localStorage.removeItem("token")
+      window.location.href = "/";
+    }
   };
 
   if (!mounted) {

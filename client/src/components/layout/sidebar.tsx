@@ -18,6 +18,7 @@ const navigation = [
   { name: "Subscriptions", href: "/subscriptions", icon: CreditCard },
   { name: "Analytics", href: "/analytics", icon: BarChart3 },
   { name: "Employees", href: "/employees", icon: Users },
+  { name: "Users", href: "/shop-users", icon: Users },
   { name: "Office Expenses", href: "/expenses", icon: Receipt },
   { name: "Referrals", href: "/referrals", icon: UserPlus },
   { name: "Support", href: "/support", icon: Headphones },

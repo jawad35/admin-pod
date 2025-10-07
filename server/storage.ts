@@ -26,6 +26,13 @@ import {
   type InsertReferral,
   type AuditLog,
   type InsertAuditLog,
+  SafeShop,
+  UserSubscription,
+  SubscriptionPlan,
+  InsertSubscriptionPlan,
+  InsertUserSubscription,
+  userSubscriptions,
+  subscriptionPlans,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sum, sql } from "drizzle-orm";
@@ -81,10 +88,61 @@ export interface IStorage {
 
   // Dashboard stats
   getDashboardStats(): Promise<any>;
+
+  // Subscription plan operations
+  // In your storage interface, add:
+  getSubscriptionPlans(): Promise<SubscriptionPlan[]>;
+  getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined>;
+  createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan>;
+  updateSubscriptionPlan(id: string, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan>;
+
+  // User subscription operations
+  getUserSubscriptions(userId: string): Promise<UserSubscription[]>;
+  getShopSubscriptions(shopId: string): Promise<UserSubscription[]>;
+  createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription>;
+  updateUserSubscription(id: string, subscription: Partial<InsertUserSubscription>): Promise<UserSubscription>;
+  getSubscriptionHistory(filters?: { userId?: string; shopId?: string; month?: number; year?: number }): Promise<UserSubscription[]>;
 }
 
 export class DatabaseStorage implements IStorage {
   // User operations (required for Replit Auth)
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async createUser(data: {
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    passwordHash: string;
+    profileImageUrl?: string;
+    role?: string;
+    shopId?: string;
+    mobileNo?: string;
+    address?: string;
+    agreeTerms?: boolean;
+    signedAgreementUrl?: string;
+    isPermanent?: boolean;
+  }): Promise<User> {
+    const [user] = await db.insert(users).values({
+      email: data.email,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      profileImageUrl: data.profileImageUrl,
+      passwordHash: data.passwordHash,
+      role: data.role || 'cashier',
+      shopId: data.shopId,
+      mobileNo: data.mobileNo,
+      address: data.address,
+      agreeTerms: data.agreeTerms || false,
+      signedAgreementUrl: data.signedAgreementUrl,
+      isPermanent: data.isPermanent || false,
+    }).returning();
+    return user;
+  }
+
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
@@ -104,14 +162,45 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+  async getUsersWithShops(): Promise<any[]> {
+    const usersData = await db.select().from(users).orderBy(desc(users.createdAt));
+    const shopsData = await db.select().from(shops);
+
+    return usersData.map(user => ({
+      ...user,
+      shop: shopsData.find(shop => shop.id === user.shopId)
+    }));
+  }
+
+  async updateUser(id: string, userData: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        ...userData,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
 
   // Shop operations
+
+  // In your storage file
+  async getShopByEmail(email: string): Promise<Shop | undefined> {
+    const [shop] = await db.select().from(shops).where(eq(shops.email, email));
+    return shop;
+  }
+
   async getShops(): Promise<Shop[]> {
     return await db.select().from(shops).orderBy(desc(shops.createdAt));
   }
-
   async getShop(id: string): Promise<Shop | undefined> {
-    const [shop] = await db.select().from(shops).where(eq(shops.id, id));
+    const [shop] = await db
+      .select()
+      .from(shops)
+      .where(eq(shops.id, id));
+
     return shop;
   }
 
@@ -306,6 +395,91 @@ export class DatabaseStorage implements IStorage {
       totalStorage: totalStorage.sum || "0",
       churnRate: totalShops.count ? ((expiredShops.count || 0) / totalShops.count * 100).toFixed(1) : "0",
     };
+  }
+
+  // Subscription plan operations
+  // Add to your DatabaseStorage class:
+  async getSubscriptionPlans(): Promise<SubscriptionPlan[]> {
+    return await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.isActive, true));
+  }
+
+  async getSubscriptionPlan(id: string): Promise<SubscriptionPlan | undefined> {
+    const [plan] = await db.select().from(subscriptionPlans).where(eq(subscriptionPlans.id, id));
+    return plan;
+  }
+
+  async createSubscriptionPlan(plan: InsertSubscriptionPlan): Promise<SubscriptionPlan> {
+    const [newPlan] = await db.insert(subscriptionPlans).values(plan).returning();
+    return newPlan;
+  }
+
+  async updateSubscriptionPlan(id: string, plan: Partial<InsertSubscriptionPlan>): Promise<SubscriptionPlan> {
+    const [updatedPlan] = await db
+      .update(subscriptionPlans)
+      .set({ ...plan, updatedAt: new Date() })
+      .where(eq(subscriptionPlans.id, id))
+      .returning();
+    return updatedPlan;
+  }
+
+  // User subscription operations
+  async getUserSubscriptions(userId: string): Promise<UserSubscription[]> {
+    return await db
+      .select()
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.userId, userId))
+      .orderBy(desc(userSubscriptions.year), desc(userSubscriptions.month));
+  }
+
+  async getShopSubscriptions(shopId: string): Promise<UserSubscription[]> {
+    return await db
+      .select()
+      .from(userSubscriptions)
+      .where(eq(userSubscriptions.shopId, shopId))
+      .orderBy(desc(userSubscriptions.year), desc(userSubscriptions.month));
+  }
+
+  async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
+    const [newSubscription] = await db.insert(userSubscriptions).values(subscription).returning();
+    return newSubscription;
+  }
+
+  async deleteUserSubscription(id: string): Promise<void> {
+    await db.delete(userSubscriptions).where(eq(userSubscriptions.id, id));
+  }
+
+  async incrementReferralCount(userId: string): Promise<void> {
+    await db.update(users)
+      .set({ referralCount: sql`${users.referralCount} + 1` })
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserSubscription(id: string, subscription: Partial<InsertUserSubscription>): Promise<UserSubscription> {
+    const [updatedSubscription] = await db
+      .update(userSubscriptions)
+      .set({ ...subscription, updatedAt: new Date() })
+      .where(eq(userSubscriptions.id, id))
+      .returning();
+    return updatedSubscription;
+  }
+
+  async getSubscriptionHistory(filters?: { userId?: string; shopId?: string; month?: number; year?: number }): Promise<UserSubscription[]> {
+    let query = db.select().from(userSubscriptions);
+
+    if (filters?.userId) {
+      query = query.where(eq(userSubscriptions.userId, filters.userId));
+    }
+    if (filters?.shopId) {
+      query = query.where(eq(userSubscriptions.shopId, filters.shopId));
+    }
+    if (filters?.month) {
+      query = query.where(eq(userSubscriptions.month, filters.month));
+    }
+    if (filters?.year) {
+      query = query.where(eq(userSubscriptions.year, filters.year));
+    }
+
+    return await query.orderBy(desc(userSubscriptions.year), desc(userSubscriptions.month));
   }
 }
 

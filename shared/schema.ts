@@ -25,16 +25,56 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table for Replit Auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
+  passwordHash: varchar("password_hash").notNull(),
+  // Enhanced fields
+  role: varchar("role", { length: 20 }).notNull().default("cashier"),
+  shopId: varchar("shop_id").references(() => shops.id),
+  mobileNo: varchar("mobile_no", { length: 20 }),
+  address: text("address"),
+  agreeTerms: boolean("agree_terms").default(false),
+  signedAgreementUrl: varchar("signed_agreement_url", { length: 500 }),
+  isPermanent: boolean("is_permanent").default(false),
+  referralCount: integer("referral_count").default(0),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+
+// In shared/schema.ts
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  durationDays: integer("duration_days").notNull(),
+  features: jsonb("features"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userSubscriptions = pgTable("user_subscriptions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  // userId: varchar("user_id").notNull().references(() => users.id),
+  planId: varchar("plan_id").notNull().references(() => subscriptionPlans.id),
+  shopId: varchar("shop_id").references(() => shops.id),
+  // amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").notNull().default("pending"),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  // discount: decimal("discount", { precision: 10, scale: 2 }).default("0"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 
 // Shop types enum
 export const shopTypeEnum = pgEnum("shop_type", ["retailer", "salon"]);
@@ -73,8 +113,6 @@ export const shops = pgTable("shops", {
   shopId: varchar("shop_id").notNull().unique(),
   name: varchar("name").notNull(),
   owner: varchar("owner").notNull(),
-  email: varchar("email").notNull(),
-  password: varchar("password").notNull(),
   type: shopTypeEnum("type").notNull(),
   city: varchar("city").notNull(),
   location: text("location").notNull(),
@@ -86,6 +124,7 @@ export const shops = pgTable("shops", {
   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
   permanentLicense: boolean("permanent_license").default(false),
   expiryDate: timestamp("expiry_date"),
+
   storageUsed: decimal("storage_used", { precision: 10, scale: 2 }).default(
     "0",
   ),
@@ -209,7 +248,44 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+export const registerSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  profileImageUrl: z.string().url("Invalid URL").optional(),
+});
+
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+export const loginSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+// Enhanced registration schema
+export const shopUsersSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  role: z.enum(['super_admin', 'admin', 'cashier', 'user']).default('user'),
+  shopId: z.string().optional(),
+  mobileNo: z.string().min(1, "Mobile number is required"),
+  address: z.string().min(1, "Address is required"),
+  agreeTerms: z.boolean().refine(val => val === true, "You must agree to terms and policies"),
+  signedAgreementUrl: z.string().optional(),
+  isPermanent: z.boolean().default(false),
+  planId: z.string().optional(), // Changed from number to string
+  referrerId: z.string().optional(), // Changed from number to string
+});
+
+export type LoginInput = z.infer<typeof loginSchema>;
+
 // Insert schemas
+
+
 export const insertShopSchema = createInsertSchema(shops).omit({
   id: true,
   createdAt: true,
@@ -228,11 +304,21 @@ export const insertSubscriptionSchema = createInsertSchema(subscriptions).omit({
   updatedAt: true,
 });
 
-export const insertExpenseSchema = createInsertSchema(expenses).omit({
+export const insertExpenseSchema = createInsertSchema(expenses, {
+  amount: z.preprocess(
+    (val) => (val !== undefined && val !== null ? String(val) : undefined),
+    z.string()
+  ),
+  date: z.preprocess(
+    (val) => (val ? new Date(val as string) : undefined),
+    z.date()
+  ),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
+
 
 export const insertComplaintSchema = createInsertSchema(complaints).omit({
   id: true,
@@ -257,11 +343,19 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
 });
 
 // Types
+
+// Types
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = typeof subscriptionPlans.$inferInsert;
+export type UserSubscription = typeof userSubscriptions.$inferSelect;
+export type InsertUserSubscription = typeof userSubscriptions.$inferInsert;
+
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 
 export type InsertShop = z.infer<typeof insertShopSchema>;
 export type Shop = typeof shops.$inferSelect;
+export type SafeShop = Omit<Shop, "password">;
 
 export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employees.$inferSelect;

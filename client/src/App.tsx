@@ -18,9 +18,13 @@ import Support from "@/pages/support";
 import Maintenance from "@/pages/maintenance";
 import Settings from "@/pages/settings";
 import DashboardLayout from "@/components/layout/dashboard-layout";
+import UsersManagement from "./pages/shop-users";
+import ShopUserRegistration from "./pages/create-shop-user";
+import ShopSubscriptionHistory from "./pages/subscription-history";
 
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  console.log(isAuthenticated)
 
   return (
     <Switch>
@@ -31,6 +35,9 @@ function Router() {
           <Route path="/" component={Dashboard} />
           <Route path="/shops" component={Shops} />
           <Route path="/employees" component={Employees} />
+          <Route path="/shop-users" component={UsersManagement} />
+          <Route path="/create-shop-user/:id?" component={ShopUserRegistration} />
+          <Route path="/shop-subscriptions/:shopId" component={ShopSubscriptionHistory} />
           <Route path="/analytics" component={Analytics} />
           <Route path="/subscriptions" component={Subscriptions} />
           <Route path="/expenses" component={Expenses} />

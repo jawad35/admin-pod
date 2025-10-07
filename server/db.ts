@@ -1,21 +1,16 @@
-import { drizzle } from "drizzle-orm/neon-http";
-import { neon } from "@neondatabase/serverless";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import "dotenv/config"; // loads .env automatically
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL environment variable is required");
-}
+const isRemote = !!process.env.DATABASE_URL;
 
-// Fix URL encoding issues with special characters in password
-let databaseUrl = process.env.DATABASE_URL;
-// If the URL contains unencoded # characters in the password, encode them
-if (databaseUrl.includes('#') && !databaseUrl.includes('%23')) {
-  // Parse the URL to safely encode only the password part
-  const urlParts = databaseUrl.match(/^(postgresql:\/\/[^:]+:)([^@]+)(@.+)$/);
-  if (urlParts) {
-    const [, prefix, password, suffix] = urlParts;
-    databaseUrl = prefix + encodeURIComponent(password) + suffix;
-  }
-}
+const pool = new Pool({
+  connectionString:
+    process.env.DATABASE_URL ||
+    "postgresql://postgres:yourpassword@localhost:5432/yourdbname",
+  ssl: isRemote
+    ? { rejectUnauthorized: false } // Supabase / Heroku / Neon
+    : false,                        // local dev, no SSL
+});
 
-const sql = neon(databaseUrl);
-export const db = drizzle(sql);
+export const db = drizzle(pool);
