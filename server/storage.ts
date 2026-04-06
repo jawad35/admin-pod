@@ -33,6 +33,7 @@ import {
   InsertUserSubscription,
   userSubscriptions,
   subscriptionPlans,
+  licenses,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, count, sum, sql } from "drizzle-orm";
@@ -41,6 +42,11 @@ export interface IStorage {
   // User operations (required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
+
+  getLicenseByKey(licenseKey: string): Promise<any>;
+  createLicense(licenseData: any): Promise<any>;
+  updateLicense(licenseKey: string, data: any): Promise<any>;
+  getLicensesByShopId(shopId: string): Promise<any[]>;
 
   // Shop operations
   getShops(): Promise<Shop[]>;
@@ -105,6 +111,36 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+
+  // In DatabaseStorage class
+  async getLicenseByKey(licenseKey: string): Promise<any> {
+    const result = await db.select().from(licenses).where(eq(licenses.license_key, licenseKey)).limit(1);
+    return result[0];
+  }
+
+  async createLicense(licenseData: any): Promise<any> {
+    const result = await db.insert(licenses).values(licenseData).returning();
+    return result[0];
+  }
+
+  // In storage.ts
+  async updateLicense(licenseKey: string, data: any): Promise<any> {
+    // Convert dates properly
+    const updateData = { ...data };
+    if (updateData.activated_at && !(updateData.activated_at instanceof Date)) {
+      updateData.activated_at = new Date(updateData.activated_at);
+    }
+    if (updateData.expires_at && !(updateData.expires_at instanceof Date)) {
+      updateData.expires_at = new Date(updateData.expires_at);
+    }
+
+    const result = await db.update(licenses).set(updateData).where(eq(licenses.license_key, licenseKey)).returning();
+    return result[0];
+  }
+
+  async getLicensesByShopId(shopId: string): Promise<any[]> {
+    return await db.select().from(licenses).where(eq(licenses.shop_id, shopId));
+  }
   // User operations (required for Replit Auth)
 
   async getUserByEmail(email: string): Promise<User | undefined> {

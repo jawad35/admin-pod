@@ -8,15 +8,9 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Enable CORS for all routes
-app.use(cors({
-  origin: "http://127.0.0.1:5001", // Your frontend origin
-  credentials: true
-}));
-
 // Or enable CORS for specific origins
 app.use(cors({
-  origin: ["http://127.0.0.1:5001", "http://localhost:5001","http://192.168.10.8:5001"],
+  origin: ["http://127.0.0.1:5001", "http://localhost:5001"],
   credentials: true
 }));
 

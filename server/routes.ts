@@ -814,6 +814,252 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // In your server/index.ts - update the license activation endpoint
+  // In your server/index.ts
+  // In your server/index.ts
+  // Store activated licenses in memory (for testing)
+
+  // Admin endpoint to generate license key for a shop
+  app.post("/api/admin/generate-license", isAuthenticated, async (req: any, res) => {
+    try {
+      const { shopId, planType, durationDays } = req.body;
+
+      // Check if user is admin
+      // if (req.user.role !== 'admin') {
+      //   return res.status(403).json({ message: "Unauthorized" });
+      // }
+
+      // Get shop details
+      const shop = await storage.getShop(shopId);
+      if (!shop) {
+        return res.status(404).json({ message: "Shop not found" });
+      }
+
+      // Generate unique license key
+      const licenseKey = `POS-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString().slice(-6)}`;
+
+      // Calculate expiry date
+      let expiresAt = null;
+      if (planType === 'test') {
+        // 30 seconds from now
+        expiresAt = new Date(Date.now() + 30 * 1000);
+      } else if (planType !== 'lifetime' && durationDays) {
+        expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + durationDays);
+      }
+
+      const license = await storage.createLicense({
+        license_key: licenseKey,
+        shop_id: shopId,
+        plan_type: planType,
+        duration_days: durationDays,
+        status: 'inactive',
+        expires_at: expiresAt
+      });
+
+      res.json({
+        success: true,
+        license: {
+          key: license.license_key,
+          plan_type: license.plan_type,
+          duration_days: license.duration_days,
+          expires_at: license.expires_at,
+          shop: {
+            name: shop.name,
+            owner: shop.owner,
+            shopId: shop.shopId
+          }
+        }
+      });
+    } catch (error) {
+      console.error("Error generating license:", error);
+      res.status(500).json({ message: "Failed to generate license" });
+    }
+  });
+
+  // Get license status endpoint
+  app.get("/api/license/status/:licenseKey", async (req, res) => {
+    try {
+      const { licenseKey } = req.params;
+      const license = await storage.getLicenseByKey(licenseKey);
+
+      if (!license) {
+        return res.json({ success: false, message: "License not found" });
+      }
+
+      const shop = await storage.getShop(license.shop_id);
+
+      res.json({
+        success: true,
+        license: {
+          key: license.license_key,
+          status: license.status,
+          plan_type: license.plan_type,
+          expires_at: license.expires_at,
+          activated_at: license.activated_at
+        },
+        shop
+      });
+    } catch (error) {
+      console.error("Error checking license:", error);
+      res.status(500).json({ success: false, message: "Server error" });
+    }
+  });
+
+
+  const activatedLicenses = new Map();
+
+  // In your server/index.ts - Update license activation endpoint
+  app.post('/api/license/activate', async (req, res) => {
+    try {
+      const { license_key, hardware_id, shop_name, app_version } = req.body;
+
+      // Get license from database
+      const license = await storage.getLicenseByKey(license_key);
+
+      if (!license) {
+        return res.json({ success: false, message: 'Invalid license key' });
+      }
+
+      // Check if already activated on another device
+      if (license.hardware_id && license.hardware_id !== hardware_id) {
+        return res.json({ success: false, message: 'License already activated on another computer' });
+      }
+
+      // Check if expired - handle null expires_at (lifetime license)
+      if (license.expires_at) {
+        const expiresAt = new Date(license.expires_at);
+        if (expiresAt < new Date()) {
+          return res.json({ success: false, message: 'License has expired' });
+        }
+      }
+
+      // Get shop details
+      const shop = await storage.getShop(license.shop_id);
+
+      if (!shop) {
+        return res.json({ success: false, message: 'Shop not found' });
+      }
+
+      // Update license with hardware_id
+      await storage.updateLicense(license_key, {
+        hardware_id: hardware_id,
+        activated_at: new Date(),
+        status: 'active'
+      });
+
+      // Calculate expiry date for response - handle properly
+      let expiryDateForResponse = null;
+      if (license.expires_at) {
+        // If expires_at exists, use it
+        expiryDateForResponse = new Date(license.expires_at);
+      } else if (license.duration_days) {
+        // Calculate based on duration days
+        const calculatedExpiry = new Date();
+        calculatedExpiry.setDate(calculatedExpiry.getDate() + license.duration_days);
+        expiryDateForResponse = calculatedExpiry;
+      }
+
+      res.json({
+        success: true,
+        expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
+        plan_type: license.plan_type,
+        shop: {
+          id: shop.id,
+          shopId: shop.shopId,
+          name: shop.name,
+          owner: shop.owner,
+          type: shop.type,
+          city: shop.city,
+          location: shop.location,
+          imageUrl: shop.imageUrl,
+          subscriptionStatus: shop.subscriptionStatus,
+          monthlyFee: shop.monthlyFee,
+          discount: shop.discount,
+          permanentLicense: shop.permanentLicense,
+          expiryDate: shop.expiryDate,
+          createdAt: shop.createdAt
+        },
+        message: 'License activated successfully'
+      });
+    } catch (error) {
+      console.error('Activation error:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
+  // Get licenses for a shop
+  app.get("/api/licenses/shop/:shopId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { shopId } = req.params;
+      const licenses = await storage.getLicensesByShopId(shopId);
+      res.json(licenses);
+    } catch (error) {
+      console.error("Error fetching licenses:", error);
+      res.status(500).json({ message: "Failed to fetch licenses" });
+    }
+  });
+
+  // Get license details by key (for verification)
+  app.get("/api/license/:licenseKey", async (req, res) => {
+    try {
+      const { licenseKey } = req.params;
+      const license = await storage.getLicenseByKey(licenseKey);
+
+      if (!license) {
+        return res.status(404).json({ message: "License not found" });
+      }
+
+      const shop = await storage.getShop(license.shop_id);
+
+      res.json({
+        license: {
+          key: license.license_key,
+          status: license.status,
+          plan_type: license.plan_type,
+          expires_at: license.expires_at,
+          activated_at: license.activated_at,
+          hardware_id: license.hardware_id
+        },
+        shop: {
+          name: shop?.name,
+          owner: shop?.owner,
+          shopId: shop?.shopId
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching license:", error);
+      res.status(500).json({ message: "Failed to fetch license" });
+    }
+  });
+
+  app.post('/api/license/verify', async (req, res) => {
+    try {
+      const { license_key, hardware_id } = req.body;
+
+      console.log('License verification request:', { license_key, hardware_id });
+
+      // Get the stored license data
+      const license = activatedLicenses.get(license_key);
+
+      if (!license) {
+        return res.json({
+          success: false,
+          message: 'License not found'
+        });
+      }
+
+      // Return the ORIGINAL expiry date, not a new one
+      res.json({
+        success: true,
+        expiry_date: license.expiry_date  // Return stored expiry date
+      });
+    } catch (error) {
+      console.error('Verification error:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

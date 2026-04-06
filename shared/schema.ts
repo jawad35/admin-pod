@@ -138,6 +138,20 @@ export const shops = pgTable("shops", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// In your shared/schema.ts
+export const licenses = pgTable("licenses", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  license_key: varchar("license_key").unique().notNull(),
+  shop_id: varchar("shop_id").notNull(),
+  hardware_id: varchar("hardware_id"),
+  plan_type: varchar("plan_type").notNull(), // monthly, quarterly, yearly, lifetime
+  status: varchar("status").default("inactive"), // active, inactive, expired
+  activated_at: timestamp("activated_at"),
+  expires_at: timestamp("expires_at"),
+  created_at: timestamp("created_at").defaultNow(),
+  updated_at: timestamp("updated_at").defaultNow(),
+});
+
 // Employees table
 export const employees = pgTable("employees", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

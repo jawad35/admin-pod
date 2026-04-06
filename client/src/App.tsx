@@ -9,6 +9,8 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Shops from "@/pages/shops";
+import Licenses from "@/pages/licenses";
+
 import Employees from "@/pages/employees";
 import Analytics from "@/pages/analytics";
 import Subscriptions from "@/pages/subscriptions";
@@ -34,6 +36,7 @@ function Router() {
         <DashboardLayout>
           <Route path="/" component={Dashboard} />
           <Route path="/shops" component={Shops} />
+          <Route path="/license" component={Licenses} />
           <Route path="/employees" component={Employees} />
           <Route path="/shop-users" component={UsersManagement} />
           <Route path="/create-shop-user/:id?" component={ShopUserRegistration} />
