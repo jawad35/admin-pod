@@ -48,17 +48,17 @@ export const users = pgTable("users", {
 
 
 // In shared/schema.ts
-export const subscriptionPlans = pgTable("subscription_plans", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: varchar("name").notNull(),
-  description: text("description"),
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  durationDays: integer("duration_days").notNull(),
-  features: jsonb("features"),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+// export const subscriptionPlans = pgTable("subscription_plans", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   name: varchar("name").notNull(),
+//   description: text("description"),
+//   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+//   durationDays: integer("duration_days").notNull(),
+//   features: jsonb("features"),
+//   isActive: boolean("is_active").default(true),
+//   createdAt: timestamp("created_at").defaultNow(),
+//   updatedAt: timestamp("updated_at").defaultNow(),
+// });
 
 export const userSubscriptions = pgTable("user_subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -108,44 +108,46 @@ export const maintenanceStatusEnum = pgEnum("maintenance_status", [
 ]);
 
 // Shops table
-export const shops = pgTable("shops", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  shopId: varchar("shop_id").notNull().unique(),
-  name: varchar("name").notNull(),
-  owner: varchar("owner").notNull(),
-  type: shopTypeEnum("type").notNull(),
-  city: varchar("city").notNull(),
-  location: text("location").notNull(),
-  imageUrl: varchar("image_url"),
-  subscriptionStatus: subscriptionStatusEnum("subscription_status")
-    .notNull()
-    .default("active"),
-  monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }).notNull(),
-  discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
-  permanentLicense: boolean("permanent_license").default(false),
-  expiryDate: timestamp("expiry_date"),
+// export const shops = pgTable("shops", {
+//   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+//   shopId: varchar("shop_id").notNull().unique(),
+//   name: varchar("name").notNull(),
+//   owner: varchar("owner").notNull(),
+//   type: shopTypeEnum("type").notNull(),
+//   city: varchar("city").notNull(),
+//   location: text("location").notNull(),
+//   imageUrl: varchar("image_url"),
+//   subscriptionStatus: subscriptionStatusEnum("subscription_status")
+//     .notNull()
+//     .default("active"),
+//   monthlyFee: decimal("monthly_fee", { precision: 10, scale: 2 }).notNull(),
+//   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+//   permanentLicense: boolean("permanent_license").default(false),
+//   expiryDate: timestamp("expiry_date"),
 
-  storageUsed: decimal("storage_used", { precision: 10, scale: 2 }).default(
-    "0",
-  ),
-  storageLimit: decimal("storage_limit", { precision: 10, scale: 2 }).default(
-    "1000",
-  ),
-  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default(
-    "0",
-  ),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+//   storageUsed: decimal("storage_used", { precision: 10, scale: 2 }).default(
+//     "0",
+//   ),
+//   storageLimit: decimal("storage_limit", { precision: 10, scale: 2 }).default(
+//     "1000",
+//   ),
+//   totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default(
+//     "0",
+//   ),
+//   createdAt: timestamp("created_at").defaultNow(),
+//   updatedAt: timestamp("updated_at").defaultNow(),
+// });
 
-// In your shared/schema.ts
+// In shared/schema.ts
 export const licenses = pgTable("licenses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   license_key: varchar("license_key").unique().notNull(),
   shop_id: varchar("shop_id").notNull(),
+  admin_pin: varchar("admin_pin").notNull().default('0000'), // Add default
   hardware_id: varchar("hardware_id"),
-  plan_type: varchar("plan_type").notNull(), // monthly, quarterly, yearly, lifetime
-  status: varchar("status").default("inactive"), // active, inactive, expired
+  plan_type: varchar("plan_type").notNull(),
+  duration_days: integer("duration_days"),
+  status: varchar("status").default("inactive"),
   activated_at: timestamp("activated_at"),
   expires_at: timestamp("expires_at"),
   created_at: timestamp("created_at").defaultNow(),
@@ -171,11 +173,71 @@ export const employees = pgTable("employees", {
 });
 
 // Subscriptions table
+// shared/db/schema.ts
+
+// Shops table
+export const shops = pgTable("shops", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  shopId: varchar("shop_id").notNull().unique(),
+  name: varchar("name").notNull(),
+  owner: varchar("owner").notNull(),
+  type: shopTypeEnum("type").notNull(),
+  city: varchar("city").notNull(),
+  location: text("location").notNull(),
+  imageUrl: varchar("image_url"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status")
+    .notNull()
+    .default("active"),
+  subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id), // Link to subscription plan
+  discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),
+  permanentLicense: boolean("permanent_license").default(false),
+  expiryDate: timestamp("expiry_date"),
+  storageUsed: decimal("storage_used", { precision: 10, scale: 2 }).default("0"),
+  storageLimit: decimal("storage_limit", { precision: 10, scale: 2 }).default("1000"),
+  totalRevenue: decimal("total_revenue", { precision: 12, scale: 2 }).default("0"),
+  referral: varchar("referral"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Subscription Plans table
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(), // e.g., "Basic", "Pro", "Premium"
+  planType: planTypeEnum("plan_type").notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  duration: integer("duration").notNull(), // Duration in months
+  features: jsonb("features").default([]),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment History table
+export const paymentHistory = pgTable("payment_history", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  shopId: varchar("shop_id")
+    .notNull()
+    .references(() => shops.id),
+  subscriptionId: varchar("subscription_id").references(() => subscriptions.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  paymentMonth: timestamp("payment_month").notNull(), // The month this payment is for
+  paymentDate: timestamp("payment_date").defaultNow(),
+  paymentMethod: varchar("payment_method"), // cash, card, bank_transfer
+  status: varchar("status").default("paid"), // paid, pending, failed
+  receiptNumber: varchar("receipt_number"),
+  notes: text("notes"),
+  collectedBy: varchar("collected_by"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Subscriptions table (for tracking subscription periods)
 export const subscriptions = pgTable("subscriptions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   shopId: varchar("shop_id")
     .notNull()
     .references(() => shops.id),
+  subscriptionPlanId: varchar("subscription_plan_id").references(() => subscriptionPlans.id),
   planType: planTypeEnum("plan_type").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"),

@@ -1,11 +1,14 @@
+// pages/shops.tsx (Updated with payment history modal)
+
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { useAuth } from "@/hooks/useAuth";
-import { queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import ShopsTable from "@/components/tables/shops-table";
 import ShopForm from "@/components/forms/shop-form";
+import { PaymentHistoryModal } from "@/components/modals/payment-history-modal";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +16,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Download, Upload } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
 
 interface Shop {
   id: string;
@@ -41,6 +43,8 @@ export default function Shops() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingShop, setEditingShop] = useState<Shop | null>(null);
+  const [selectedShopForPayment, setSelectedShopForPayment] = useState<Shop | null>(null);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     type: "all",
     status: "all",
@@ -105,7 +109,6 @@ export default function Shops() {
   };
 
   const handleViewShop = (shop: Shop) => {
-    // TODO: Implement view shop details
     toast({
       title: "View Shop",
       description: `Viewing details for ${shop.name}`,
@@ -113,11 +116,15 @@ export default function Shops() {
   };
 
   const handleRenewShop = (shop: Shop) => {
-    // TODO: Implement renew subscription
     toast({
       title: "Renew Subscription",
       description: `Renewing subscription for ${shop.name}`,
     });
+  };
+
+  const handleViewPaymentHistory = (shop: Shop) => {
+    setSelectedShopForPayment(shop);
+    setIsPaymentModalOpen(true);
   };
 
   const handleAddShop = () => {
@@ -157,7 +164,6 @@ export default function Shops() {
   };
 
   const handleExportData = () => {
-    // TODO: Implement Excel export
     toast({
       title: "Export Started",
       description: "Shop data export will download shortly",
@@ -165,14 +171,12 @@ export default function Shops() {
   };
 
   const handleImportData = () => {
-    // TODO: Implement Excel import
     toast({
       title: "Import Started",
       description: "Shop data import functionality will be available soon",
     });
   };
 
-  // Provide safe defaults for shops
   const safeShops = shops || [];
   
   const filteredShops = safeShops.filter((shop: any) => {
@@ -183,12 +187,22 @@ export default function Shops() {
     return true;
   });
 
+  // Calculate total revenue for filtered shops
+  const totalRevenue = filteredShops.reduce((sum: number, shop: any) => {
+    return sum + parseFloat(shop.totalRevenue || "0");
+  }, 0);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold" data-testid="text-shops-title">
-          Shop Management
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold" data-testid="text-shops-title">
+            Shop Management
+          </h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Total Revenue: PKR {totalRevenue.toLocaleString()}
+          </p>
+        </div>
         <div className="flex space-x-3">
           <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
             <DialogTrigger asChild>
@@ -298,6 +312,13 @@ export default function Shops() {
         onEdit={handleEditShop}
         onView={handleViewShop}
         onRenew={handleRenewShop}
+        onViewPaymentHistory={handleViewPaymentHistory}
+      />
+
+      <PaymentHistoryModal
+        shop={selectedShopForPayment}
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
       />
     </div>
   );

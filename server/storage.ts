@@ -34,9 +34,10 @@ import {
   userSubscriptions,
   subscriptionPlans,
   licenses,
+  paymentHistory,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc, count, sum, sql } from "drizzle-orm";
+import { eq, desc, count, sum, sql, and, gte, lte, between } from "drizzle-orm";
 
 export interface IStorage {
   // User operations (required for Replit Auth)
@@ -474,6 +475,16 @@ export class DatabaseStorage implements IStorage {
       .where(eq(userSubscriptions.shopId, shopId))
       .orderBy(desc(userSubscriptions.year), desc(userSubscriptions.month));
   }
+  // Add this method to the DatabaseStorage class
+  // Add this method to the DatabaseStorage class
+  async getShopByShopId(shopId: string): Promise<Shop | undefined> {
+    const [shop] = await db
+      .select()
+      .from(shops)
+      .where(eq(shops.shopId, shopId));
+
+    return shop;
+  }
 
   async createUserSubscription(subscription: InsertUserSubscription): Promise<UserSubscription> {
     const [newSubscription] = await db.insert(userSubscriptions).values(subscription).returning();
@@ -499,6 +510,151 @@ export class DatabaseStorage implements IStorage {
     return updatedSubscription;
   }
 
+
+  // Replace the getPaymentByMonth method
+  async getPaymentByMonth(shopId: string, paymentMonth: Date): Promise<any> {
+    try {
+      const year = paymentMonth.getFullYear();
+      const month = paymentMonth.getMonth();
+      const startOfMonth = new Date(year, month, 1);
+      const endOfMonth = new Date(year, month + 1, 0);
+
+      console.log("getPaymentByMonth - shopId:", shopId);
+      console.log("startOfMonth:", startOfMonth);
+      console.log("endOfMonth:", endOfMonth);
+
+      // Use Drizzle ORM instead of raw SQL
+      const payment = await db
+        .select()
+        .from(paymentHistory)
+        .where(
+          and(
+            eq(paymentHistory.shopId, shopId),
+            gte(paymentHistory.paymentMonth, startOfMonth),
+            lte(paymentHistory.paymentMonth, endOfMonth)
+          )
+        )
+        .limit(1);
+
+      console.log("Found payment:", payment[0]);
+      return payment[0];
+    } catch (error) {
+      console.error("Error in getPaymentByMonth:", error);
+      throw error;
+    }
+  }
+
+  // Replace the getPaymentHistory method
+async getPaymentHistory(shopId: string, page: number = 1, limit: number = 10): Promise<{ payments: any[], total: number }> {
+  try {
+    const offset = (page - 1) * limit;
+    
+    console.log("getPaymentHistory - shopId:", shopId, "page:", page, "limit:", limit, "offset:", offset);
+    
+    // Get paginated payments using Drizzle
+    const payments = await db
+      .select()
+      .from(paymentHistory)
+      .where(eq(paymentHistory.shopId, shopId))
+      .orderBy(desc(paymentHistory.paymentMonth))
+      .limit(limit)
+      .offset(offset);
+    
+    console.log("Retrieved payments count:", payments.length);
+    
+    // Get total count
+    const result = await db
+      .select({ count: count() })
+      .from(paymentHistory)
+      .where(eq(paymentHistory.shopId, shopId));
+    
+    const total = Number(result[0]?.count || 0);
+    console.log("Total payments count:", total);
+    
+    return {
+      payments: payments,
+      total: total
+    };
+  } catch (error) {
+    console.error("Error in getPaymentHistory:", error);
+    throw error;
+  }
+}
+
+  // Replace the createPayment method
+  async createPayment(paymentData: any): Promise<any> {
+    try {
+      console.log("Creating payment with data:", paymentData);
+
+      const receiptNumber = paymentData.receipt_number ||
+        `RCP-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+      // Use Drizzle ORM insert
+      const [payment] = await db
+        .insert(paymentHistory)
+        .values({
+          shopId: paymentData.shop_id,
+          amount: paymentData.amount,
+          paymentMonth: paymentData.payment_month,
+          paymentDate: paymentData.payment_date || new Date(),
+          paymentMethod: paymentData.payment_method,
+          status: paymentData.payment_status || 'paid',
+          receiptNumber: receiptNumber,
+          collectedBy: paymentData.collected_by,
+          notes: paymentData.notes || null,
+        })
+        .returning();
+
+      console.log("Payment created:", payment);
+      return payment;
+    } catch (error) {
+      console.error("Error in createPayment:", error);
+      throw error;
+    }
+  }
+
+  // Update the updatePayment method
+async updatePayment(id: string, paymentData: any): Promise<any> {
+  // Convert snake_case to camelCase if needed
+  const updateData: any = {};
+  
+  if (paymentData.amount !== undefined) updateData.amount = paymentData.amount;
+  if (paymentData.paymentMethod !== undefined) updateData.paymentMethod = paymentData.paymentMethod;
+  if (paymentData.payment_method !== undefined) updateData.paymentMethod = paymentData.payment_method;
+  if (paymentData.collectedBy !== undefined) updateData.collectedBy = paymentData.collectedBy;
+  if (paymentData.collected_by !== undefined) updateData.collectedBy = paymentData.collected_by;
+  if (paymentData.notes !== undefined) updateData.notes = paymentData.notes;
+  if (paymentData.paymentMonth !== undefined) updateData.paymentMonth = paymentData.paymentMonth;
+  if (paymentData.payment_month !== undefined) updateData.paymentMonth = paymentData.payment_month;
+  if (paymentData.paymentDate !== undefined) updateData.paymentDate = paymentData.paymentDate;
+  if (paymentData.payment_date !== undefined) updateData.paymentDate = paymentData.payment_date;
+  
+  updateData.updatedAt = new Date();
+  
+  console.log("Updating payment with data:", updateData);
+  
+  const [payment] = await db
+    .update(paymentHistory)
+    .set(updateData)
+    .where(eq(paymentHistory.id, id))
+    .returning();
+  
+  return payment;
+}
+async getPaymentById(id: string): Promise<any> {
+  const [payment] = await db
+    .select()
+    .from(paymentHistory)
+    .where(eq(paymentHistory.id, id));
+  return payment;
+}
+  // Update the deletePayment method
+  async deletePayment(id: string): Promise<void> {
+    await db
+      .delete(paymentHistory)
+      .where(eq(paymentHistory.id, id));
+  }
+
   async getSubscriptionHistory(filters?: { userId?: string; shopId?: string; month?: number; year?: number }): Promise<UserSubscription[]> {
     let query = db.select().from(userSubscriptions);
 
@@ -516,6 +672,22 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await query.orderBy(desc(userSubscriptions.year), desc(userSubscriptions.month));
+  }
+  async updateLicensePin(licenseKey: string, newPin: string): Promise<any> {
+    const result = await db
+      .update(licenses)
+      .set({
+        admin_pin: newPin,
+        updated_at: new Date()
+      })
+      .where(eq(licenses.license_key, licenseKey))
+      .returning();
+
+    if (!result || result.length === 0) {
+      throw new Error('License not found');
+    }
+
+    return result[0];
   }
 }
 

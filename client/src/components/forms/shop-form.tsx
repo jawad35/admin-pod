@@ -1,6 +1,8 @@
+// components/forms/shop-form.tsx
+
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -12,9 +14,9 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { insertShopSchema } from "@shared/schema";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
-// Updated schema without email/password, adding referral
+// Updated schema without email/password, adding referral and subscriptionPlanId
 export const shopFormSchema = insertShopSchema
   .extend({
     expiryDate: z.preprocess(
@@ -22,6 +24,7 @@ export const shopFormSchema = insertShopSchema
       z.date().nullable()
     ),
     referral: z.string().optional(),
+    subscriptionPlanId: z.string().optional(),
   })
   .omit({
     email: true,
@@ -29,6 +32,14 @@ export const shopFormSchema = insertShopSchema
   });
 
 type ShopFormData = z.infer<typeof shopFormSchema>;
+
+interface SubscriptionPlan {
+  id: string;
+  name: string;
+  planType: string;
+  price: string;
+  duration: number;
+}
 
 interface Shop {
   id: string;
@@ -49,17 +60,50 @@ interface Shop {
   storageUsed?: string;
   storageLimit?: string;
   referral?: string;
+  subscriptionPlanId?: string;
 }
 
 interface ShopFormProps {
-  shop?: Shop; // Optional shop for editing
+  shop?: Shop;
   onSuccess: () => void;
 }
 
 export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
   const { toast } = useToast();
   const isEditing = Boolean(shop);
+  const [selectedPlanPrice, setSelectedPlanPrice] = useState<string>("0");
 
+  // Fetch subscription plans
+// Fetch subscription plans
+// Fetch subscription plans
+const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery({
+  queryKey: ["/api/subscription-plans"],
+  queryFn: async () => {
+    console.log("1. Starting fetch...");
+    try {
+      const data = await apiRequest("GET", "/api/subscription-plans");
+      console.log("2. Data received:", data);
+      
+      // apiRequest already returns parsed JSON, so data is already the array
+      if (Array.isArray(data)) {
+        console.log("3. Returning array with length:", data.length);
+        return data;
+      }
+      if (data && data.data && Array.isArray(data.data)) {
+        console.log("3. Returning data.data with length:", data.data.length);
+        return data.data;
+      }
+      
+      console.log("3. Returning empty array");
+      return [];
+    } catch (err) {
+      console.error("Error fetching plans:", err);
+      throw err;
+    }
+  },
+});
+
+  // In the form default values
   const form = useForm<ShopFormData>({
     resolver: zodResolver(shopFormSchema),
     defaultValues: {
@@ -71,7 +115,6 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
       location: "",
       imageUrl: "",
       subscriptionStatus: "active",
-      monthlyFee: "15000",
       discount: "0",
       permanentLicense: false,
       expiryDate: "",
@@ -79,13 +122,30 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
       storageLimit: "1000",
       totalRevenue: "0",
       referral: "",
+      subscriptionPlanId: null, // Change from "" to null
     },
   });
+
+  // Watch for subscription plan changes
+  const watchSubscriptionPlanId = form.watch("subscriptionPlanId");
+
+  // Update price when plan changes
+  useEffect(() => {
+    if (watchSubscriptionPlanId && subscriptionPlans) {
+      const selectedPlan = subscriptionPlans.find(
+        (plan: SubscriptionPlan) => plan.id === watchSubscriptionPlanId
+      );
+      if (selectedPlan) {
+        setSelectedPlanPrice(selectedPlan.price);
+      }
+    } else {
+      setSelectedPlanPrice("0");
+    }
+  }, [watchSubscriptionPlanId, subscriptionPlans]);
 
   // Reset form when shop changes (for editing)
   useEffect(() => {
     if (shop) {
-      // Format the expiry date for the date input
       const expiryDate = shop.expiryDate ? new Date(shop.expiryDate).toISOString().split('T')[0] : "";
 
       form.reset({
@@ -97,7 +157,6 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         location: shop.location || "",
         imageUrl: shop.imageUrl || "",
         subscriptionStatus: (shop.subscriptionStatus as "active" | "expired" | "suspended") || "active",
-        monthlyFee: shop.monthlyFee?.toString() || "15000",
         discount: shop.discount?.toString() || "0",
         permanentLicense: shop.permanentLicense || false,
         expiryDate: expiryDate,
@@ -105,11 +164,12 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         storageLimit: shop.storageLimit?.toString() || "1000",
         totalRevenue: shop.totalRevenue?.toString() || "0",
         referral: shop.referral || "",
+        subscriptionPlanId: shop.subscriptionPlanId || "",
       });
     } else {
-      // Reset to default values for new shop
+
       form.reset({
-        shopId: "",
+        shopId: "23232",
         name: "",
         owner: "",
         type: "retailer",
@@ -117,7 +177,6 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         location: "",
         imageUrl: "",
         subscriptionStatus: "active",
-        monthlyFee: "15000",
         discount: "0",
         permanentLicense: false,
         expiryDate: "",
@@ -125,84 +184,87 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         storageLimit: "1000",
         totalRevenue: "0",
         referral: "",
+        subscriptionPlanId: "",
       });
     }
   }, [shop, form]);
+
+  // Add this useEffect to debug
+  useEffect(() => {
+    console.log("subscriptionPlans changed:", subscriptionPlans);
+    if (subscriptionPlans && subscriptionPlans.length > 0) {
+      console.log("First plan:", subscriptionPlans[0]);
+    }
+  }, [subscriptionPlans]);
+
+  // Update the transformShopDataForAPI function
   const transformShopDataForAPI = (data: ShopFormData) => {
     const transformed = { ...data } as any;
 
-    // Convert numeric fields to strings (as expected by decimal fields in schema)
-    transformed.monthlyFee = data.monthlyFee.toString();
+    // Use selected plan price as monthly fee
+    if (data.subscriptionPlanId && selectedPlanPrice !== "0") {
+      transformed.monthlyFee = selectedPlanPrice;
+    } else {
+      transformed.monthlyFee = data.monthlyFee || "0";
+    }
+
+    // Handle subscriptionPlanId - set to null if empty string
+    transformed.subscriptionPlanId = data.subscriptionPlanId && data.subscriptionPlanId !== ""
+      ? data.subscriptionPlanId
+      : null;
+
     transformed.discount = data.discount.toString();
     transformed.storageUsed = data.storageUsed.toString();
     transformed.storageLimit = data.storageLimit.toString();
     transformed.totalRevenue = data.totalRevenue.toString();
 
-    // Convert expiryDate string to Date object
     if (data.expiryDate) {
       const date = new Date(data.expiryDate);
       if (isNaN(date.getTime())) {
         throw new Error('Invalid date format');
       }
-      transformed.expiryDate = date; // Send as Date object, not string
+      transformed.expiryDate = date;
     } else {
-      const defaultDate = new Date();
-      defaultDate.setFullYear(defaultDate.getFullYear() + 1);
-      transformed.expiryDate = defaultDate;
+      // Calculate expiry date based on subscription plan duration
+      if (data.subscriptionPlanId && subscriptionPlans) {
+        const selectedPlan = subscriptionPlans.find(
+          (plan: SubscriptionPlan) => plan.id === data.subscriptionPlanId
+        );
+        if (selectedPlan) {
+          const defaultDate = new Date();
+          defaultDate.setMonth(defaultDate.getMonth() + selectedPlan.duration);
+          transformed.expiryDate = defaultDate;
+        } else {
+          const defaultDate = new Date();
+          defaultDate.setFullYear(defaultDate.getFullYear() + 1);
+          transformed.expiryDate = defaultDate;
+        }
+      } else {
+        const defaultDate = new Date();
+        defaultDate.setFullYear(defaultDate.getFullYear() + 1);
+        transformed.expiryDate = defaultDate;
+      }
     }
 
-    console.log('Transformed data for API:', transformed);
     return transformed;
   };
 
   const createShopMutation = useMutation({
     mutationFn: async (data: ShopFormData) => {
-      console.log("Form data:", data);
-
       const transformedData = transformShopDataForAPI(data);
-      console.log("Transformed data:", transformedData);
-
-      const token = localStorage.getItem("token");
-      const response = await fetch("/api/shops", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(transformedData),
-      });
-
-      if (!response.ok) {
-        let errorMessage = "Failed to create shop";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-      console.log("Created shop:", result);
-      return result;
+      const response = await apiRequest("POST", "/api/shops", transformedData);
+      return response.json();
     },
     onSuccess: (data) => {
-      console.log("Shop created successfully:", data);
-
       queryClient.invalidateQueries({ queryKey: ["/api/shops"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-
       toast({
         title: "Success! 🎉",
         description: `Shop "${data.name || data.shopId}" created successfully`,
       });
-
       onSuccess();
     },
     onError: (error) => {
-      console.error("Error creating shop:", error);
-
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -214,7 +276,6 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         }, 500);
         return;
       }
-
       toast({
         title: "Error",
         description: error.message || "Failed to create shop",
@@ -223,60 +284,33 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
     },
   });
 
+  useEffect(() => {
+  console.log("subscriptionPlans state:", subscriptionPlans);
+  console.log("plansLoading:", plansLoading);
+  console.log("isSuccess:", isSuccess);
+}, [subscriptionPlans, plansLoading, isSuccess]);
+
+
   const updateShopMutation = useMutation({
     mutationFn: async (data: ShopFormData) => {
       if (!shop) throw new Error("No shop provided for update");
-
-      console.log("Form data for update:", data);
-
       const transformedData = transformShopDataForAPI(data);
-      console.log("Transformed data for update:", transformedData);
-
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/shops/${shop.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          ...transformedData,
-          shopId: shop.shopId, // Use the original shopId, don't allow changing it
-        }),
+      const response = await apiRequest("PUT", `/api/shops/${shop.id}`, {
+        ...transformedData,
+        shopId: shop.shopId,
       });
-
-      if (!response.ok) {
-        let errorMessage = "Failed to update shop";
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.message || errorMessage;
-          console.error("Update error details:", errorData);
-        } catch (e) {
-          errorMessage = response.statusText || errorMessage;
-        }
-        throw new Error(errorMessage);
-      }
-
-      const result = await response.json();
-      console.log("Updated shop:", result);
-      return result;
+      return response;
     },
     onSuccess: (data) => {
-      console.log("Shop updated successfully:", data);
-
       queryClient.invalidateQueries({ queryKey: ["/api/shops"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-
       toast({
         title: "Success! 🎉",
         description: `Shop "${data.name || data.shopId}" updated successfully`,
       });
-
       onSuccess();
     },
     onError: (error) => {
-      console.error("Error updating shop:", error);
-
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -288,7 +322,6 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
         }, 500);
         return;
       }
-
       toast({
         title: "Error",
         description: error.message || "Failed to update shop",
@@ -298,10 +331,18 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
   });
 
   const onSubmit = (data: ShopFormData) => {
+    // Ensure subscriptionPlanId is null if empty
+    const cleanedData = {
+      ...data,
+      subscriptionPlanId: data.subscriptionPlanId && data.subscriptionPlanId !== ""
+        ? data.subscriptionPlanId
+        : null
+    };
+
     if (isEditing) {
-      updateShopMutation.mutate(data);
+      updateShopMutation.mutate(cleanedData);
     } else {
-      createShopMutation.mutate(data);
+      createShopMutation.mutate(cleanedData);
     }
   };
 
@@ -315,9 +356,9 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
           <Input
             id="shopId"
             {...form.register("shopId")}
-            placeholder="SH001"
+            placeholder="Auto-generated"
             data-testid="input-shop-id"
-            disabled={isEditing} // Disable shop ID when editing
+            disabled={isEditing}
           />
           {form.formState.errors.shopId && (
             <p className="text-sm text-destructive">
@@ -401,17 +442,46 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
             </SelectContent>
           </Select>
         </div>
-
-        <div>
-          <Label htmlFor="monthlyFee">Monthly Fee (PKR)</Label>
-          <Input
-            id="monthlyFee"
-            type="number"
-            {...form.register("monthlyFee")}
-            placeholder="15000"
-            data-testid="input-monthly-fee"
-          />
-        </div>
+<div>
+  <Label htmlFor="subscriptionPlanId">Subscription Plan (Optional)</Label>
+  {plansLoading ? (
+    <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+      Loading plans...
+    </div>
+  ) : isSuccess ? (
+    <Select
+      value={form.watch("subscriptionPlanId") || "none"}
+      onValueChange={(value) => form.setValue("subscriptionPlanId", value === "none" ? null : value)}
+    >
+      <SelectTrigger data-testid="select-subscription-plan">
+        <SelectValue placeholder="Select a plan (optional)" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="none">No plan selected</SelectItem>
+        {subscriptionPlans && subscriptionPlans.length > 0 ? (
+          subscriptionPlans.map((plan: SubscriptionPlan) => (
+            <SelectItem key={plan.id} value={plan.id}>
+              {plan.name} - {plan.planType} - PKR {plan.price}/month
+            </SelectItem>
+          ))
+        ) : (
+          <SelectItem value="no-plans" disabled>
+            No plans available - Create a plan first
+          </SelectItem>
+        )}
+      </SelectContent>
+    </Select>
+  ) : (
+    <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+      Failed to load plans. Please refresh the page.
+    </div>
+  )}
+  {selectedPlanPrice !== "0" && selectedPlanPrice !== "0.00" && (
+    <p className="text-sm text-green-600 mt-1">
+      Monthly Fee: PKR {selectedPlanPrice}
+    </p>
+  )}
+</div>
 
         <div>
           <Label htmlFor="discount">Discount (%)</Label>

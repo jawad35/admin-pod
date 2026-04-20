@@ -214,9 +214,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // In your server/routes.ts, update the subscription plan endpoints
+
   app.post("/api/subscription-plans", isAuthenticated, async (req: any, res) => {
     try {
-      const plan = await storage.createSubscriptionPlan(req.body);
+      // Handle both camelCase and snake_case field names
+      const planData = {
+        name: req.body.name,
+        description: req.body.description || null,
+        price: req.body.price,
+        planType: req.body.planType || req.body.plan_type || 'retailer',
+        duration: req.body.duration || req.body.durationDays || req.body.duration_days || 1,
+        features: req.body.features || [],
+        isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+      };
+
+      const plan = await storage.createSubscriptionPlan(planData);
       res.status(201).json(plan);
     } catch (error) {
       console.error("Error creating subscription plan:", error);
@@ -226,7 +239,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put("/api/subscription-plans/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const plan = await storage.updateSubscriptionPlan(req.params.id, req.body);
+      // Handle both camelCase and snake_case field names
+      const planData = {
+        name: req.body.name,
+        description: req.body.description,
+        price: req.body.price,
+        planType: req.body.planType || req.body.plan_type,
+        duration: req.body.duration || req.body.durationDays || req.body.duration_days,
+        features: req.body.features,
+        isActive: req.body.isActive,
+      };
+
+      const plan = await storage.updateSubscriptionPlan(req.params.id, planData);
+      res.json(plan);
+    } catch (error) {
+      console.error("Error updating subscription plan:", error);
+      res.status(500).json({ message: "Failed to update subscription plan" });
+    }
+  });
+
+  app.put("/api/subscription-plans/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      // Handle both camelCase and snake_case field names
+      const planData = {
+        name: req.body.name,
+        description: req.body.description,
+        price: req.body.price,
+        planType: req.body.planType || req.body.plan_type,
+        duration: req.body.duration || req.body.durationDays || req.body.duration_days,
+        features: req.body.features,
+        isActive: req.body.isActive,
+      };
+
+      const plan = await storage.updateSubscriptionPlan(req.params.id, planData);
       res.json(plan);
     } catch (error) {
       console.error("Error updating subscription plan:", error);
@@ -243,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/shops/:shopId/subscriptions", isAuthenticated, async (req: any, res) => {
+  app.get("/api/shops/:shopId/subscriptions", async (req: any, res) => {
     try {
       const subscriptions = await storage.getShopSubscriptions(req.params.shopId);
       res.json(subscriptions);
@@ -251,6 +296,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to fetch shop subscriptions" });
     }
   });
+
+  // server/routes.ts - Add this endpoint
+  app.get("/api/shops/:shopId/subscription-status", async (req: any, res) => {
+    try {
+      const { shopId } = req.params;
+
+      console.log("Checking subscription status for shop:", shopId);
+
+      // Try to find by shopId (custom ID like "ewe") first
+      let shop = await storage.getShopByShopId(shopId);
+
+      // If not found, try by UUID id
+      if (!shop) {
+        shop = await storage.getShop(shopId);
+      }
+
+      console.log("Found shop:", shop);
+
+      if (!shop) {
+        return res.status(404).json({
+          success: false,
+          message: "Shop not found"
+        });
+      }
+
+      // Return the response in the expected format
+      res.json({
+        success: true,
+        data: {
+          id: shop.id,
+          shopId: shop.shopId,
+          name: shop.name,
+          subscriptionStatus: shop.subscriptionStatus,
+          expiryDate: shop.expiryDate,
+          permanentLicense: shop.permanentLicense,
+          isActive: shop.subscriptionStatus === "active",
+          isExpired: shop.subscriptionStatus === "expired",
+          isSuspended: shop.subscriptionStatus === "suspended"
+        }
+      });
+    } catch (error) {
+      console.error("Error checking subscription status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to check subscription status"
+      });
+    }
+  });
+
 
   app.post("/api/shops/:shopId/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
@@ -343,6 +437,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(subscription);
     } catch (error) {
       res.status(500).json({ message: "Failed to mark subscription" });
+    }
+  });
+
+
+  // Get payment history for a shop
+  app.get("/api/shops/:shopId/payment-history", async (req: any, res) => {
+    try {
+      const { shopId } = req.params;
+      console.log("heloo 123")
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 10;
+
+      console.log("Fetching payment history for shop:", shopId);
+      console.log("Page:", page, "Limit:", limit);
+
+      // Get payments from storage
+      const payments = await storage.getPaymentHistory(shopId, page, limit);
+
+      console.log(`Found ${payments.payments.length} payments, Total: ${payments.total}`);
+
+      res.json({
+        payments: payments.payments,
+        total: payments.total,
+        page: page,
+        limit: limit,
+        totalPages: Math.ceil(payments.total / limit)
+      });
+    } catch (error) {
+      console.error("Error fetching payment history:", error);
+      res.status(500).json({ message: "Failed to fetch payment history" });
+    }
+  });
+
+  // Get payment by month
+  app.get("/api/shops/:shopId/payment/:month", async (req, res) => {
+    try {
+      const { shopId, month } = req.params;
+      const paymentMonth = new Date(month);
+      const payment = await storage.getPaymentByMonth(shopId, paymentMonth);
+      res.json(payment);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch payment" });
+    }
+  });
+
+  // server/routes.ts
+  app.post("/api/shops/:shopId/mark-paid", async (req, res) => {
+    try {
+      const { shopId } = req.params;
+      const { paymentMonth, amount, paymentMethod, collectedBy, notes } = req.body;
+
+      console.log("=== MARK PAID DEBUG ===");
+      console.log("shopId:", shopId);
+      console.log("paymentMonth:", paymentMonth);
+      console.log("amount:", amount);
+      console.log("paymentMethod:", paymentMethod);
+      console.log("collectedBy:", collectedBy);
+      console.log("notes:", notes);
+
+      // Validate required fields
+      if (!shopId) {
+        console.log("Missing shopId");
+        return res.status(400).json({ message: "Shop ID is required" });
+      }
+      if (!paymentMonth) {
+        console.log("Missing paymentMonth");
+        return res.status(400).json({ message: "Payment month is required" });
+      }
+      if (!amount) {
+        console.log("Missing amount");
+        return res.status(400).json({ message: "Amount is required" });
+      }
+      if (!paymentMethod) {
+        console.log("Missing paymentMethod");
+        return res.status(400).json({ message: "Payment method is required" });
+      }
+      if (!collectedBy) {
+        console.log("Missing collectedBy");
+        return res.status(400).json({ message: "Collector name is required" });
+      }
+
+      // Check if shop exists
+      const shop = await storage.getShop(shopId);
+      if (!shop) {
+        console.log("Shop not found:", shopId);
+        return res.status(404).json({ message: "Shop not found" });
+      }
+      console.log("Shop found:", shop.name);
+
+      // Check if payment already exists for this month
+      const paymentDate = new Date(paymentMonth);
+      const existingPayment = await storage.getPaymentByMonth(shopId, paymentDate);
+      console.log("Existing payment:", existingPayment);
+
+      if (existingPayment) {
+        return res.status(400).json({ message: "Payment already recorded for this month" });
+      }
+
+      // Create payment
+      const paymentData = {
+        shop_id: shopId,
+        amount: amount.toString(),
+        payment_month: paymentDate,
+        payment_date: new Date(),
+        payment_method: paymentMethod,
+        payment_status: "paid",
+        collected_by: collectedBy,
+        notes: notes || null,
+      };
+      console.log("Creating payment with data:", paymentData);
+
+      const payment = await storage.createPayment(paymentData);
+      console.log("Payment created:", payment);
+
+      res.json(payment);
+    } catch (error) {
+      console.error("Error marking payment:", error);
+      console.error("Error stack:", error.stack);
+      res.status(500).json({ message: error.message || "Failed to mark payment" });
+    }
+  });
+
+  // Update payment
+  // Update payment
+  app.put("/api/payments/:paymentId", isAuthenticated, async (req: any, res) => {
+    try {
+      const { paymentId } = req.params;
+      const updateData = req.body;
+
+      console.log("Updating payment:", paymentId, updateData);
+
+      const updatedPayment = await storage.updatePayment(paymentId, updateData);
+
+      if (!updatedPayment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      // If amount changed, update shop total revenue
+      if (updateData.amount) {
+        const payment = await storage.getPaymentById(paymentId);
+        if (payment) {
+          const shop = await storage.getShop(payment.shopId);
+          if (shop) {
+            // Recalculate total revenue from all payments
+            const allPayments = await storage.getPaymentHistory(payment.shopId, 1, 9999);
+            const totalRevenue = allPayments.payments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
+            await storage.updateShop(payment.shopId, { totalRevenue: totalRevenue.toString() });
+          }
+        }
+      }
+
+      res.json(updatedPayment);
+    } catch (error) {
+      console.error("Error updating payment:", error);
+      res.status(500).json({ message: "Failed to update payment" });
+    }
+  });
+
+  // Delete payment
+  app.delete("/api/payments/:paymentId", async (req, res) => {
+    try {
+      const { paymentId } = req.params;
+      await storage.deletePayment(paymentId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete payment" });
     }
   });
 
@@ -820,60 +1080,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Store activated licenses in memory (for testing)
 
   // Admin endpoint to generate license key for a shop
+  // In your server/index.ts - Update the generate-license endpoint
   app.post("/api/admin/generate-license", isAuthenticated, async (req: any, res) => {
     try {
       const { shopId, planType, durationDays } = req.body;
 
-      // Check if user is admin
-      // if (req.user.role !== 'admin') {
-      //   return res.status(403).json({ message: "Unauthorized" });
-      // }
-
-      // Get shop details
-      const shop = await storage.getShop(shopId);
-      if (!shop) {
-        return res.status(404).json({ message: "Shop not found" });
-      }
-
-      // Generate unique license key
-      const licenseKey = `POS-${Math.random().toString(36).substring(2, 10).toUpperCase()}-${Date.now().toString().slice(-6)}`;
-
-      // Calculate expiry date
-      let expiresAt = null;
-      if (planType === 'test') {
-        // 30 seconds from now
-        expiresAt = new Date(Date.now() + 30 * 1000);
-      } else if (planType !== 'lifetime' && durationDays) {
-        expiresAt = new Date();
-        expiresAt.setDate(expiresAt.getDate() + durationDays);
-      }
+      // Generate license key
+      const licenseKey = `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
       const license = await storage.createLicense({
         license_key: licenseKey,
         shop_id: shopId,
         plan_type: planType,
         duration_days: durationDays,
-        status: 'inactive',
-        expires_at: expiresAt
+        status: 'inactive'
       });
+
+      // Also generate/update admin PIN for this shop
+      // Generate a random 4-6 digit PIN
+      const adminPin = Math.floor(1000 + Math.random() * 9000).toString();
+      await storage.createOrUpdateAdminPin(shopId, adminPin);
 
       res.json({
         success: true,
         license: {
           key: license.license_key,
           plan_type: license.plan_type,
-          duration_days: license.duration_days,
-          expires_at: license.expires_at,
-          shop: {
-            name: shop.name,
-            owner: shop.owner,
-            shopId: shop.shopId
-          }
-        }
+          duration_days: license.duration_days
+        },
+        admin_pin: adminPin  // Return the PIN to the POS owner
       });
     } catch (error) {
-      console.error("Error generating license:", error);
-      res.status(500).json({ message: "Failed to generate license" });
+      console.error('Error generating license:', error);
+      res.status(500).json({ message: 'Failed to generate license' });
     }
   });
 
@@ -910,6 +1149,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const activatedLicenses = new Map();
 
   // In your server/index.ts - Update license activation endpoint
+  // In your server/index.ts
   app.post('/api/license/activate', async (req, res) => {
     try {
       const { license_key, hardware_id, shop_name, app_version } = req.body;
@@ -948,13 +1188,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'active'
       });
 
-      // Calculate expiry date for response - handle properly
+      // Generate random admin PIN for this installation (4-6 digits)
+      const adminPin = Math.floor(1000 + Math.random() * 9000).toString();
+
+      // Calculate expiry date for response
       let expiryDateForResponse = null;
       if (license.expires_at) {
-        // If expires_at exists, use it
         expiryDateForResponse = new Date(license.expires_at);
       } else if (license.duration_days) {
-        // Calculate based on duration days
         const calculatedExpiry = new Date();
         calculatedExpiry.setDate(calculatedExpiry.getDate() + license.duration_days);
         expiryDateForResponse = calculatedExpiry;
@@ -964,6 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
         plan_type: license.plan_type,
+        admin_pin: adminPin,  // Send admin PIN to client
         shop: {
           id: shop.id,
           shopId: shop.shopId,
@@ -987,6 +1229,161 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ success: false, message: 'Server error' });
     }
   });
+
+
+  // In your server/index.ts
+
+  // Generate license with admin PIN
+  app.post("/api/admin/generate-license-with-pin", isAuthenticated, async (req: any, res) => {
+    try {
+      const { shopId, planType, durationDays, adminPin } = req.body;
+
+      if (!shopId || !planType || !adminPin) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      if (adminPin.length < 4) {
+        return res.status(400).json({ message: "PIN must be at least 4 digits" });
+      }
+
+      // Generate license key
+      const licenseKey = `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+      const license = await storage.createLicense({
+        license_key: licenseKey,
+        shop_id: shopId,
+        admin_pin: adminPin,
+        plan_type: planType,
+        duration_days: durationDays,
+        status: 'inactive'
+      });
+
+      res.json({
+        success: true,
+        license: {
+          id: license.id,
+          license_key: license.license_key,
+          plan_type: license.plan_type,
+          duration_days: license.duration_days
+        },
+        admin_pin: adminPin
+      });
+    } catch (error) {
+      console.error("Error generating license:", error);
+      res.status(500).json({ message: "Failed to generate license" });
+    }
+  });
+
+  // Activate license with PIN verification
+  app.post('/api/license/activate-with-pin', async (req, res) => {
+    try {
+      const { license_key, admin_pin, hardware_id, shop_name, app_version } = req.body;
+      console.log(req.body)
+      if (!license_key || !admin_pin) {
+        return res.json({ success: false, message: 'License key and admin PIN are required' });
+      }
+
+      // Get license from database
+      const license = await storage.getLicenseByKey(license_key);
+
+      if (!license) {
+        return res.json({ success: false, message: 'Invalid license key' });
+      }
+
+      // Verify admin PIN matches
+      if (license.admin_pin !== admin_pin) {
+        return res.json({ success: false, message: 'Invalid admin PIN' });
+      }
+
+      // Check if already activated on another device
+      if (license.hardware_id && license.hardware_id !== hardware_id) {
+        return res.json({ success: false, message: 'License already activated on another computer' });
+      }
+
+      // Check if expired
+      if (license.expires_at) {
+        const expiresAt = new Date(license.expires_at);
+        if (expiresAt < new Date()) {
+          return res.json({ success: false, message: 'License has expired' });
+        }
+      }
+
+      // Get shop details
+      const shop = await storage.getShop(license.shop_id);
+
+      if (!shop) {
+        return res.json({ success: false, message: 'Shop not found' });
+      }
+
+      // Update license with hardware_id
+      await storage.updateLicense(license_key, {
+        hardware_id: hardware_id,
+        activated_at: new Date(),
+        status: 'active'
+      });
+
+      // Calculate expiry date for response
+      let expiryDateForResponse = null;
+      if (license.expires_at) {
+        expiryDateForResponse = new Date(license.expires_at);
+      } else if (license.duration_days) {
+        const calculatedExpiry = new Date();
+        calculatedExpiry.setDate(calculatedExpiry.getDate() + license.duration_days);
+        expiryDateForResponse = calculatedExpiry;
+      }
+
+      res.json({
+        success: true,
+        expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
+        plan_type: license.plan_type,
+        shop:shop,
+        message: 'License activated successfully'
+      });
+    } catch (error) {
+      console.error('Activation error:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
+    }
+  });
+
+  // Change admin PIN for a license
+  app.post("/api/admin-pin/change", async (req: any, res) => {
+    try {
+      const { licenseKey, oldPin, newPin } = req.body;
+
+      if (!licenseKey || !oldPin || !newPin) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      if (newPin.length < 4) {
+        return res.status(400).json({ message: "PIN must be at least 4 digits" });
+      }
+
+      // Get license
+      const license = await storage.getLicenseByKey(licenseKey);
+
+      if (!license) {
+        return res.status(404).json({ message: "License not found" });
+      }
+
+      // Verify old PIN
+      if (license.admin_pin !== oldPin) {
+        return res.status(401).json({ message: "Invalid current PIN" });
+      }
+
+      // Update PIN
+      await storage.updateLicensePin(licenseKey, newPin);
+
+      res.json({
+        success: true,
+        message: "PIN changed successfully"
+      });
+    } catch (error) {
+      console.error("Error changing PIN:", error);
+      res.status(500).json({ message: "Failed to change PIN" });
+    }
+  });
+
+
 
   // Get licenses for a shop
   app.get("/api/licenses/shop/:shopId", isAuthenticated, async (req: any, res) => {

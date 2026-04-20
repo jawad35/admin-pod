@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Key, Copy, CheckCircle, AlertCircle, Loader2, Filter, History } from "lucide-react";
+import { Search, Key, Copy, CheckCircle, AlertCircle, Loader2, Filter, History, Shield, RefreshCw } from "lucide-react";
 
 interface Shop {
   id: string;
@@ -25,6 +25,7 @@ interface Shop {
 interface License {
   id: string;
   license_key: string;
+  admin_pin: string;
   shop_id: string;
   hardware_id: string | null;
   plan_type: string;
@@ -40,11 +41,18 @@ export default function LicenseManagement() {
   const [selectedShop, setSelectedShop] = useState<Shop | null>(null);
   const [planType, setPlanType] = useState("monthly");
   const [durationDays, setDurationDays] = useState(30);
+  const [customPin, setCustomPin] = useState("");
   const [generatedKey, setGeneratedKey] = useState<string | null>(null);
+  const [generatedPin, setGeneratedPin] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [copiedPin, setCopiedPin] = useState(false);
   const [historyStatusFilter, setHistoryStatusFilter] = useState<string>("all");
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isLicenseModalOpen, setIsLicenseModalOpen] = useState(false);
+  const [isChangePinModalOpen, setIsChangePinModalOpen] = useState(false);
+  const [oldPin, setOldPin] = useState("");
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
@@ -62,7 +70,7 @@ export default function LicenseManagement() {
     },
   });
 
-  // Fetch licenses for selected shop with real-time expiry check
+  // Fetch licenses for selected shop
   const { data: licenses = [], refetch: refetchLicenses } = useQuery<License[]>({
     queryKey: ["licenses", selectedShop?.id],
     queryFn: async () => {
@@ -92,18 +100,17 @@ export default function LicenseManagement() {
     return license.status === historyStatusFilter;
   });
 
-  // Pagination for history modal
   const totalPages = Math.ceil(filteredHistoryLicenses.length / itemsPerPage);
   const paginatedLicenses = filteredHistoryLicenses.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  // Generate license mutation
+  // Generate license mutation (creates both license key and admin PIN)
   const generateLicenseMutation = useMutation({
-    mutationFn: async (data: { shopId: string; planType: string; durationDays: number }) => {
+    mutationFn: async (data: { shopId: string; planType: string; durationDays: number; adminPin: string }) => {
       const token = localStorage.getItem("token");
-      const res = await fetch("/api/admin/generate-license", {
+      const res = await fetch("/api/admin/generate-license-with-pin", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -115,11 +122,48 @@ export default function LicenseManagement() {
       return res.json();
     },
     onSuccess: (data) => {
-      setGeneratedKey(data.license.key);
+      setGeneratedKey(data.license.license_key);
+      setGeneratedPin(data.admin_pin);
       toast({
-        title: "License Generated",
-        description: `License key: ${data.license.key}`,
+        title: "License & PIN Generated",
+        description: `License key and admin PIN created successfully`,
       });
+      refetchLicenses();
+      setCustomPin("");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Change PIN mutation
+  const changePinMutation = useMutation({
+    mutationFn: async (data: { licenseKey: string; oldPin: string; newPin: string }) => {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/admin-pin/change", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to change PIN");
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "PIN Changed",
+        description: "Admin PIN has been updated successfully",
+      });
+      setOldPin("");
+      setNewPin("");
+      setConfirmPin("");
+      setIsChangePinModalOpen(false);
       refetchLicenses();
     },
     onError: (error: Error) => {
@@ -148,6 +192,15 @@ export default function LicenseManagement() {
       return;
     }
 
+    if (!customPin || customPin.length < 4) {
+      toast({
+        title: "Error",
+        description: "Please enter an admin PIN (minimum 4 digits)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     let actualDurationDays = durationDays;
     if (planType === "test") {
       actualDurationDays = 0.00035;
@@ -157,16 +210,67 @@ export default function LicenseManagement() {
       shopId: selectedShop.id,
       planType,
       durationDays: actualDurationDays,
+      adminPin: customPin,
     });
   };
 
-  const copyToClipboard = (text: string) => {
+  const handleChangePin = () => {
+    if (!oldPin || !newPin || !confirmPin) {
+      toast({
+        title: "Error",
+        description: "Please fill all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPin !== confirmPin) {
+      toast({
+        title: "Error",
+        description: "New PINs do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPin.length < 4) {
+      toast({
+        title: "Error",
+        description: "PIN must be at least 4 digits",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const activeLicense = licenses.find(l => l.status === 'active');
+    if (!activeLicense) {
+      toast({
+        title: "Error",
+        description: "No active license found for this shop",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    changePinMutation.mutate({
+      licenseKey: activeLicense.license_key,
+      oldPin,
+      newPin,
+    });
+  };
+
+  const copyToClipboard = (text: string, type: 'key' | 'pin') => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (type === 'key') {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      setCopiedPin(true);
+      setTimeout(() => setCopiedPin(false), 2000);
+    }
     toast({
       title: "Copied!",
-      description: "License key copied to clipboard",
+      description: `${type === 'key' ? 'License key' : 'Admin PIN'} copied to clipboard`,
     });
   };
 
@@ -212,7 +316,7 @@ export default function LicenseManagement() {
                   <TableHead>Owner</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Action</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -248,9 +352,12 @@ export default function LicenseManagement() {
                             onClick={() => {
                               setSelectedShop(shop);
                               setGeneratedKey(null);
+                              setGeneratedPin(null);
+                              setCustomPin("");
+                              setIsLicenseModalOpen(true);
                             }}
                           >
-                            {selectedShop?.id === shop.id ? "Selected" : "Select"}
+                            {selectedShop?.id === shop.id ? "Manage" : "Select"}
                           </Button>
                           <Button
                             size="sm"
@@ -275,86 +382,230 @@ export default function LicenseManagement() {
         </CardContent>
       </Card>
 
-      {/* License Generation Modal */}
-      <Dialog open={!!selectedShop && !isHistoryModalOpen} onOpenChange={(open) => !open && setSelectedShop(null)}>
+      {/* License Management Modal */}
+      <Dialog open={isLicenseModalOpen && !!selectedShop && !isHistoryModalOpen} onOpenChange={(open) => {
+        if (!open) {
+          setIsLicenseModalOpen(false);
+          setSelectedShop(null);
+        }
+      }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Generate License for {selectedShop?.name}</DialogTitle>
+            <DialogTitle>Manage License for {selectedShop?.name}</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Plan Type</Label>
-                <Select value={planType} onValueChange={setPlanType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="test">Test (30 seconds)</SelectItem>
-                    <SelectItem value="trial">Trial (7 days)</SelectItem>
-                    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
-                    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
-                    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
-                    <SelectItem value="lifetime">Lifetime</SelectItem>
-                  </SelectContent>
-                </Select>
+          <div className="space-y-6">
+            {/* License Generation Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Generate New License
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Plan Type</Label>
+                  <Select value={planType} onValueChange={setPlanType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="test">Test (30 seconds)</SelectItem>
+                      <SelectItem value="trial">Trial (7 days)</SelectItem>
+                      <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+                      <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+                      <SelectItem value="yearly">Yearly (365 days)</SelectItem>
+                      <SelectItem value="lifetime">Lifetime</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {planType !== "lifetime" && planType !== "test" && (
+                  <div>
+                    <Label>Duration (Days)</Label>
+                    <Input
+                      type="number"
+                      value={durationDays}
+                      onChange={(e) => setDurationDays(parseInt(e.target.value))}
+                      min={1}
+                      max={365}
+                    />
+                  </div>
+                )}
               </div>
 
-              {planType !== "lifetime" && planType !== "test" && (
-                <div>
-                  <Label>Duration (Days)</Label>
-                  <Input
-                    type="number"
-                    value={durationDays}
-                    onChange={(e) => setDurationDays(parseInt(e.target.value))}
-                    min={1}
-                    max={365}
-                  />
-                </div>
-              )}
+              <div>
+                <Label>Admin PIN (4-6 digits)</Label>
+                <Input
+                  type="password"
+                  placeholder="Enter admin PIN for this shop"
+                  value={customPin}
+                  onChange={(e) => setCustomPin(e.target.value)}
+                  maxLength={6}
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  This PIN will be required for shop owner to activate the license
+                </p>
+              </div>
 
-              {planType === "test" && (
-                <div>
-                  <Label>Duration</Label>
-                  <Input type="text" value="30 seconds" disabled className="bg-muted" />
+              <Button
+                onClick={handleGenerateLicense}
+                disabled={generateLicenseMutation.isPending || !customPin || customPin.length < 4}
+                className="w-full"
+              >
+                {generateLicenseMutation.isPending ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Key className="mr-2 h-4 w-4" />
+                    Generate License & PIN
+                  </>
+                )}
+              </Button>
+
+              {(generatedKey || generatedPin) && (
+                <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg space-y-3 border border-green-200">
+                  <h4 className="font-semibold text-green-800 dark:text-green-400">Successfully Generated!</h4>
+                  {generatedKey && (
+                    <div>
+                      <Label>License Key</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="flex-1 p-2 bg-background rounded font-mono text-sm">
+                          {generatedKey}
+                        </code>
+                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(generatedKey, 'key')}>
+                          {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {generatedPin && (
+                    <div>
+                      <Label>Admin PIN</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <code className="flex-1 p-2 bg-background rounded font-mono text-sm font-bold">
+                          {generatedPin}
+                        </code>
+                        <Button size="sm" variant="outline" onClick={() => copyToClipboard(generatedPin, 'pin')}>
+                          {copiedPin ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            <Button
-              onClick={handleGenerateLicense}
-              disabled={generateLicenseMutation.isPending}
-              className="w-full"
-            >
-              {generateLicenseMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Key className="mr-2 h-4 w-4" />
-                  Generate License Key
-                </>
-              )}
-            </Button>
-
-            {generatedKey && (
-              <div className="mt-4 p-4 bg-muted rounded-lg">
-                <Label>Generated License Key</Label>
-                <div className="flex items-center gap-2 mt-2">
-                  <code className="flex-1 p-2 bg-background rounded font-mono text-sm">
-                    {generatedKey}
-                  </code>
-                  <Button size="sm" variant="outline" onClick={() => copyToClipboard(generatedKey)}>
-                    {copied ? <CheckCircle className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
+            {/* Existing Licenses Section */}
+            {/* {licenses[10].length > 0 && (
+              <>
+                <div className="border-t" />
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Shield className="h-5 w-5" />
+                    Existing Licenses
+                  </h3>
+                  
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>License Key</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Plan</TableHead>
+                          <TableHead>Expires</TableHead>
+                          <TableHead>Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {licenses.map((license) => (
+                          <TableRow key={license.id}>
+                            <TableCell>
+                              <code className="text-xs font-mono">{license.license_key}</code>
+                            </TableCell>
+                            <TableCell>{getStatusBadge(license.status)}</TableCell>
+                            <TableCell className="capitalize">{license.plan_type}</TableCell>
+                            <TableCell>
+                              {license.expires_at ? new Date(license.expires_at).toLocaleDateString() : "Lifetime"}
+                            </TableCell>
+                            <TableCell>
+                              {license.status === 'active' && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setIsChangePinModalOpen(true)}
+                                >
+                                  <RefreshCw className="h-3 w-3 mr-1" />
+                                  Change PIN
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Share this license key with the shop owner to activate their POS software
-                </p>
-              </div>
-            )}
+              </>
+            )} */}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change PIN Modal */}
+      <Dialog open={isChangePinModalOpen} onOpenChange={setIsChangePinModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Change Admin PIN for {selectedShop?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Current PIN</Label>
+              <Input
+                type="password"
+                placeholder="Enter current PIN"
+                value={oldPin}
+                onChange={(e) => setOldPin(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>New PIN (4-6 digits)</Label>
+              <Input
+                type="password"
+                placeholder="Enter new PIN"
+                value={newPin}
+                onChange={(e) => setNewPin(e.target.value)}
+                maxLength={6}
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label>Confirm New PIN</Label>
+              <Input
+                type="password"
+                placeholder="Confirm new PIN"
+                value={confirmPin}
+                onChange={(e) => setConfirmPin(e.target.value)}
+                maxLength={6}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsChangePinModalOpen(false)} className="flex-1">
+                Cancel
+              </Button>
+              <Button onClick={handleChangePin} disabled={changePinMutation.isPending} className="flex-1">
+                {changePinMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Change PIN"
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
@@ -391,6 +642,7 @@ export default function LicenseManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>License Key</TableHead>
+                  <TableHead>Admin PIN</TableHead>
                   <TableHead>Plan Type</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Hardware ID</TableHead>
@@ -402,7 +654,7 @@ export default function LicenseManagement() {
               <TableBody>
                 {paginatedLicenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No licenses found
                     </TableCell>
                   </TableRow>
@@ -411,6 +663,19 @@ export default function LicenseManagement() {
                     <TableRow key={license.id}>
                       <TableCell>
                         <code className="text-xs font-mono">{license.license_key}</code>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <code className="text-xs font-mono">••••</code>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 w-6 p-0"
+                            onClick={() => copyToClipboard(license.admin_pin, 'pin')}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                       <TableCell className="capitalize">{license.plan_type}</TableCell>
                       <TableCell>{getStatusBadge(license.status)}</TableCell>
@@ -435,7 +700,6 @@ export default function LicenseManagement() {
             </Table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <div className="text-sm text-muted-foreground">
