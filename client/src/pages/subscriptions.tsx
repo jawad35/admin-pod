@@ -54,7 +54,7 @@ export default function Subscriptions() {
     description: "",
     price: "",
     duration: "", // Changed from durationDays to duration
-    planType: "retailer", // Added planType
+    planType: "monthly", // Added planType
     features: "",
     isActive: true,
   });
@@ -121,7 +121,7 @@ export default function Subscriptions() {
       description: "",
       price: "",
       duration: "",
-      planType: "retailer",
+      planType: "monthly",
       features: "",
       isActive: true,
     });
@@ -203,7 +203,7 @@ export default function Subscriptions() {
       description: plan.description || "",
       price: plan.price.toString(),
       duration: plan.duration.toString(),
-      planType: plan.planType || "retailer",
+      planType: plan.planType || "monthly",
       features: plan.features ? plan.features.join(', ') : "",
       isActive: plan.isActive,
     });
@@ -271,7 +271,7 @@ export default function Subscriptions() {
                     value={formData.planType}
                     onChange={(e) => setFormData({ ...formData, planType: e.target.value })}
                   >
-                    <option value="monthly">monthly</option>
+                    <option value="monthly">Monthly</option>
                     <option value="yearly">Yearly</option>
                     <option value="permanent">Permanent</option>
 
@@ -473,8 +473,9 @@ export default function Subscriptions() {
                   value={formData.planType}
                   onChange={(e) => setFormData({ ...formData, planType: e.target.value })}
                 >
-                  <option value="retailer">Retailer</option>
-                  <option value="salon">Salon</option>
+                     <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="permanent">Permanent</option>
                 </select>
               </div>
             </div>
