@@ -271,8 +271,10 @@ export default function Subscriptions() {
                     value={formData.planType}
                     onChange={(e) => setFormData({ ...formData, planType: e.target.value })}
                   >
-                    <option value="retailer">Retailer</option>
-                    <option value="salon">Salon</option>
+                    <option value="monthly">monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="permanent">Permanent</option>
+
                   </select>
                 </div>
               </div>
