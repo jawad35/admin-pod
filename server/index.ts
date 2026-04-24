@@ -1,21 +1,33 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import "dotenv/config"; // loads .env automatically
+import "dotenv/config";
 import { setupVite, serveStatic, log } from "./vite";
-import cors from 'cors'; // Install with: npm install cors
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Or enable CORS for specific origins
+// CORS setup
 app.use(cors({
   origin: ["http://127.0.0.1:5001", "http://localhost:5001"],
   credentials: true
 }));
-
-// Or enable CORS for all origins (development only)
 app.use(cors());
+
+// Serve static files from dist/public
+app.use(express.static(path.join(__dirname, '../dist/public')));
+
+// Explicit route for policies.html (optional, for clarity)
+app.get('/policies.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../dist/public/policies.html'));
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -57,20 +69,12 @@ app.use((req, res, next) => {
     throw err;
   });
 
-  // importantly only setup vite in development and after
-  // setting up all the other routes so the catch-all route
-  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // ALWAYS serve the app on the port specified in the environment variable PORT
-  // Other ports are firewalled. Default to 5000 if not specified.
-  // this serves both the API and the client.
-  // It is the only port that is not firewalled.
-  console.log(process.env.PORT)
   const port = parseInt(process.env.PORT || '5000', 10);
   server.listen(
     { port, host: "0.0.0.0" },
