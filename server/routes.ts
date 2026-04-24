@@ -2,7 +2,9 @@ import type { Express, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import bcrypt from "bcryptjs";
-
+import fs from 'fs';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import {
   insertShopSchema,
@@ -17,6 +19,8 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import jwt from "jsonwebtoken";
+import path from "path";
+import { fileURLToPath } from "url";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
@@ -1336,7 +1340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
         plan_type: license.plan_type,
-        shop:shop,
+        shop: shop,
         message: 'License activated successfully'
       });
     } catch (error) {
@@ -1457,10 +1461,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/policies', (req, res) => {
-  const fs = require('fs');
-  const path = require('path');
-  const html = fs.readFileSync(path.join(__dirname, '../public/policies.html'), 'utf8');
+ app.get('/api/policies', (req, res) => {
+  const html = fs.readFileSync(path.join(__dirname, 'policies.html'), 'utf8');
   res.send(html);
 });
 
