@@ -1457,6 +1457,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/policies', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  const html = fs.readFileSync(path.join(__dirname, '../public/policies.html'), 'utf8');
+  res.send(html);
+});
+
   const httpServer = createServer(app);
   return httpServer;
 }
