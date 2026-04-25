@@ -21,11 +21,11 @@ app.use(cors({
 app.use(cors());
 
 // Serve static files from dist/public
-app.use(express.static(path.join(__dirname, '../dist/public')));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Explicit route for policies.html (optional, for clarity)
 app.get('/policies.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/public/policies.html'));
+  res.sendFile(path.join(__dirname, '../public/policies.html'));
 });
 
 app.use((req, res, next) => {
