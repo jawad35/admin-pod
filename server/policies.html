@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,19 +11,23 @@
         * {
             font-family: 'Inter', sans-serif;
         }
+
         body {
             background: #f8fafc;
         }
+
         @media print {
             body {
                 background: white;
             }
+
             .no-print {
                 display: none;
             }
         }
     </style>
 </head>
+
 <body class="bg-slate-50">
     <div class="flex-1 flex flex-col overflow-hidden">
         <main class="flex-1 overflow-auto p-6">
@@ -31,7 +36,8 @@
                 <div class="flex items-center gap-4">
                     <div class="bg-blue-600/20 p-3 rounded-xl">
                         <svg class="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                     </div>
                     <div>
@@ -49,24 +55,46 @@
                     <div class="sticky top-6 bg-white rounded-xl shadow-sm border p-4">
                         <h3 class="font-semibold text-lg mb-3">Quick Navigation</h3>
                         <div class="space-y-2">
-                            <a href="#terms" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M3 12h18m-9 6h9" /></svg>
+                            <a href="#terms"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 6h18M3 12h18m-9 6h9" />
+                                </svg>
                                 Terms of Service
                             </a>
-                            <a href="#privacy" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                            <a href="#privacy"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                                 Privacy Policy
                             </a>
-                            <a href="#payment" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M6 9h12M6 15h12" /></svg>
+                            <a href="#payment"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 12h18M6 9h12M6 15h12" />
+                                </svg>
                                 Payment & Refund
                             </a>
-                            <a href="#support" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            <a href="#support"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                                 Support & Maintenance
                             </a>
-                            <a href="#contact" class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
-                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                            <a href="#contact"
+                                class="flex items-center gap-2 px-3 py-2 text-sm text-slate-600 hover:bg-slate-100 rounded-lg transition-colors no-print">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
                                 Contact Us
                             </a>
                         </div>
@@ -79,7 +107,11 @@
                     <div id="terms" class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="border-b p-6">
                             <h2 class="text-xl font-bold flex items-center gap-2">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6h18M3 12h18m-9 6h9" /></svg>
+                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 6h18M3 12h18m-9 6h9" />
+                                </svg>
                                 Terms of Service
                             </h2>
                         </div>
@@ -87,21 +119,30 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">1. Subscription & Payment Terms</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>1.1 Brainsees POS is a subscription-based software. Users must pay according to their chosen subscription plan (Monthly, Yearly, or Lifetime).</p>
-                                    <p>1.2 Subscription fees must be paid before the expiry date. Failure to pay will result in automatic suspension of access to the POS system.</p>
-                                    <p>1.3 Upon expiry, the application will be locked, and users will not be able to process sales until payment is renewed.</p>
-                                    <p>1.4 The company reserves the right to change subscription prices with 30 days' prior notice.</p>
-                                    <p>1.5 Lifetime license is a one-time payment for the software license only. Maintenance and support fees apply separately.</p>
+                                    <p>1.1 Brainsees POS is a subscription-based software. Users must pay according to
+                                        their chosen subscription plan (Monthly, Yearly, or Lifetime).</p>
+                                    <p>1.2 Subscription fees must be paid before the expiry date. Failure to pay will
+                                        result in automatic suspension of access to the POS system.</p>
+                                    <p>1.3 Upon expiry, the application will be locked, and users will not be able to
+                                        process sales until payment is renewed.</p>
+                                    <p>1.4 The company reserves the right to change subscription prices with 30 days'
+                                        prior notice.</p>
+                                    <p>1.5 Lifetime license is a one-time payment for the software license only.
+                                        Maintenance and support fees apply separately.</p>
                                 </div>
                             </div>
 
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">2. License & Usage</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>2.1 The license is granted to a single shop/business entity and cannot be shared or transferred without written consent.</p>
-                                    <p>2.2 Each shop requires a separate license. Using one license for multiple shops is strictly prohibited.</p>
-                                    <p>2.3 The software is for legitimate business use only. Any illegal activities using the software will result in immediate termination.</p>
-                                    <p>2.4 Reverse engineering, copying, or distributing the software is strictly prohibited.</p>
+                                    <p>2.1 The license is granted to a single shop/business entity and cannot be shared
+                                        or transferred without written consent.</p>
+                                    <p>2.2 Each shop requires a separate license. Using one license for multiple shops
+                                        is strictly prohibited.</p>
+                                    <p>2.3 The software is for legitimate business use only. Any illegal activities
+                                        using the software will result in immediate termination.</p>
+                                    <p>2.4 Reverse engineering, copying, or distributing the software is strictly
+                                        prohibited.</p>
                                 </div>
                             </div>
 
@@ -109,12 +150,18 @@
                                 <h3 class="font-semibold text-lg mb-3">3. Data Responsibility</h3>
                                 <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
                                     <div class="flex items-start gap-3">
-                                        <svg class="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        <svg class="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
                                         <div>
                                             <p class="font-semibold text-yellow-800">Important Notice</p>
                                             <p class="text-sm text-yellow-700 mt-1">
-                                                Brainsees POS is an <strong>offline system</strong>. All business data is stored locally on your computer.
-                                                The company is <strong>NOT responsible</strong> for any data loss due to:
+                                                Brainsees POS is an <strong>offline system</strong>. All business data
+                                                is stored locally on your computer.
+                                                The company is <strong>NOT responsible</strong> for any data loss due
+                                                to:
                                             </p>
                                             <ul class="list-disc list-inside text-sm text-yellow-700 mt-2 space-y-1">
                                                 <li>Hardware failure (hard drive crash, computer damage)</li>
@@ -125,7 +172,8 @@
                                                 <li>Power failures or system crashes</li>
                                             </ul>
                                             <p class="text-sm text-yellow-700 mt-2">
-                                                <strong>Recommendation:</strong> Regularly backup your database using the built-in backup feature or Google Drive integration.
+                                                <strong>Recommendation:</strong> Regularly backup your database using
+                                                the built-in backup feature or Google Drive integration.
                                             </p>
                                         </div>
                                     </div>
@@ -135,9 +183,11 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">4. Account Termination</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>4.1 The company reserves the right to terminate accounts for violation of terms, illegal activities, or non-payment.</p>
+                                    <p>4.1 The company reserves the right to terminate accounts for violation of terms,
+                                        illegal activities, or non-payment.</p>
                                     <p>4.2 Upon termination, access to the software will be revoked immediately.</p>
-                                    <p>4.3 Users may export their data before termination if requested within 7 days of notice.</p>
+                                    <p>4.3 Users may export their data before termination if requested within 7 days of
+                                        notice.</p>
                                 </div>
                             </div>
                         </div>
@@ -147,7 +197,11 @@
                     <div id="privacy" class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="border-b p-6">
                             <h2 class="text-xl font-bold flex items-center gap-2">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
                                 Privacy Policy
                             </h2>
                         </div>
@@ -155,12 +209,16 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">1. Information We Collect</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>1.1 <strong>Shop Information:</strong> Shop name, owner name, address, city, contact number, and shop type (Retailer/Salon).</p>
-                                    <p>1.2 <strong>User Information:</strong> Name, phone number, role (Admin/Operator), and login credentials.</p>
-                                    <p>1.3 <strong>License Information:</strong> License key, activation date, expiry date, and subscription plan.</p>
-                                    <p>1.4 <strong>Products & Inventory:</strong> Product names, prices, stock levels, categories, and supplier information.</p>
-                                    <p>1.5 <strong>Sales Data:</strong> Transaction records, customer names (if provided), payment methods, and sales amounts.</p>
-                                    <p>1.6 <strong>Employee Data:</strong> Employee names, salaries, attendance records, and contact information.</p>
+                                    <p>1.1 <strong>Shop Information:</strong> Shop name, owner name, address, city,
+                                        contact number, and shop type (Retailer/Salon) - <strong>for license management
+                                            only</strong>.</p>
+                                    <p>1.2 <strong>User Information:</strong> Name, phone number, role (Admin/Operator)
+                                        - <strong>for authentication only</strong>.</p>
+                                    <p>1.3 <strong>License Information:</strong> License key, activation date, expiry
+                                        date, and subscription plan - <strong>to verify subscription status</strong>.
+                                    </p>
+                                    <p>1.4 <strong>Payment History:</strong> Transaction records of subscription
+                                        payments - <strong>for billing purposes</strong>.</p>
                                 </div>
                             </div>
 
@@ -171,9 +229,13 @@
                                     <p>2.2 To verify license validity and manage subscriptions.</p>
                                     <p>2.3 To process payments and send invoices.</p>
                                     <p>2.4 To provide technical support and customer service.</p>
-                                    <p>2.5 To send important notifications about updates, security alerts, and billing.</p>
+                                    <p>2.5 To send important notifications about updates, security alerts, and billing.
+                                    </p>
                                     <div class="bg-green-50 p-3 rounded-lg">
-                                        <p class="text-sm text-green-700"><strong>Note:</strong> Your data is used <strong>ONLY for shop operations</strong> within the POS system. We do NOT sell or share your data with third parties for marketing purposes.</p>
+                                        <p class="text-sm text-green-700"><strong>Note:</strong> Your data is used
+                                            <strong>ONLY for shop operations</strong> within the POS system. We do NOT
+                                            sell or share your data with third parties for marketing purposes.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -182,20 +244,27 @@
                                 <h3 class="font-semibold text-lg mb-3">3. Data Storage & Security</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
                                     <p>3.1 All business data is stored locally on your computer (offline storage).</p>
-                                    <p>3.2 The company does not have access to your local database unless you explicitly share it for support purposes.</p>
-                                    <p>3.3 License verification and online features use encrypted connections (SSL/TLS).</p>
+                                    <p>3.2 The company does not have access to your local database unless you explicitly
+                                        share it for support purposes.</p>
+                                    <p>3.3 License verification and online features use encrypted connections (SSL/TLS).
+                                    </p>
                                     <p>3.4 Passwords are securely hashed and stored.</p>
-                                    <p>3.5 Users are responsible for securing their own computer systems with antivirus and firewalls.</p>
+                                    <p>3.5 Users are responsible for securing their own computer systems with antivirus
+                                        and firewalls.</p>
                                 </div>
                             </div>
 
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">4. Data Sharing & Disclosure</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>4.1 We do NOT sell, trade, or rent your personal information to third parties.</p>
-                                    <p>4.2 Information may be shared with law enforcement if required by Pakistani law.</p>
-                                    <p>4.3 Payment processing is handled through secure third-party payment gateways (if applicable).</p>
-                                    <p>4.4 Google Drive integration (optional) stores backups on your personal Google account – we do not access your Drive files.</p>
+                                    <p>4.1 We do NOT sell, trade, or rent your personal information to third parties.
+                                    </p>
+                                    <p>4.2 Information may be shared with law enforcement if required by Pakistani law.
+                                    </p>
+                                    <p>4.3 Payment processing is handled through secure third-party payment gateways (if
+                                        applicable).</p>
+                                    <p>4.4 Google Drive integration (optional) stores backups on your personal Google
+                                        account – we do not access your Drive files.</p>
                                 </div>
                             </div>
                         </div>
@@ -205,7 +274,13 @@
                     <div id="payment" class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="border-b p-6">
                             <h2 class="text-xl font-bold flex items-center gap-2">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M6 9h12M6 15h12" /></svg>
+                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3-.895 3-2-1.343-2-3-2z" />
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 12h18M6 9h12M6 15h12" />
+                                </svg>
                                 Payment & Refund Policy
                             </h2>
                         </div>
@@ -213,8 +288,10 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">1. Payment Terms</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>1.1 All subscription fees must be paid in advance before the billing cycle begins.</p>
-                                    <p>1.2 Monthly/Yearly plans: Payment is required before the expiry date to avoid service interruption.</p>
+                                    <p>1.1 All subscription fees must be paid in advance before the billing cycle
+                                        begins.</p>
+                                    <p>1.2 Monthly/Yearly plans: Payment is required before the expiry date to avoid
+                                        service interruption.</p>
                                     <p>1.3 Lifetime plan: One-time payment for software license only.</p>
                                     <p>1.4 Invoices are generated automatically and can be requested via email.</p>
                                     <p>1.5 Late payments may incur a PKR 500 late fee or service suspension.</p>
@@ -225,12 +302,18 @@
                                 <h3 class="font-semibold text-lg mb-3">2. Non-Refundable Policy</h3>
                                 <div class="bg-red-50 p-4 rounded-lg border border-red-200">
                                     <div class="flex items-start gap-3">
-                                        <svg class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                        <svg class="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none"
+                                            viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
                                         <div>
                                             <p class="font-semibold text-red-800">⚠️ NO REFUND POLICY</p>
                                             <p class="text-sm text-red-700 mt-1">
-                                                All subscription payments, including monthly, yearly, and lifetime licenses, are <strong>NON-REFUNDABLE</strong>.
-                                                Once payment is made, no refunds will be issued for any reason including:
+                                                All subscription payments, including monthly, yearly, and lifetime
+                                                licenses, are <strong>NON-REFUNDABLE</strong>.
+                                                Once payment is made, no refunds will be issued for any reason
+                                                including:
                                             </p>
                                             <ul class="list-disc list-inside text-sm text-red-700 mt-2 space-y-1">
                                                 <li>Change of mind or business closure</li>
@@ -251,7 +334,8 @@
                                     <p>3.2 To cancel, contact support at least 7 days before the renewal date.</p>
                                     <p>3.3 Cancellation will take effect at the end of the current billing cycle.</p>
                                     <p>3.4 No partial refunds for unused time after cancellation.</p>
-                                    <p>3.5 Users can downgrade or upgrade plans at any time; price difference will be adjusted.</p>
+                                    <p>3.5 Users can downgrade or upgrade plans at any time; price difference will be
+                                        adjusted.</p>
                                 </div>
                             </div>
                         </div>
@@ -261,7 +345,11 @@
                     <div id="support" class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="border-b p-6">
                             <h2 class="text-xl font-bold flex items-center gap-2">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
                                 Support & Maintenance Policy
                             </h2>
                         </div>
@@ -269,10 +357,13 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">1. Free Support</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>1.1 First-time setup includes a <strong>free user guide session</strong> to help you understand the system.</p>
-                                    <p>1.2 Basic technical support (installation, login issues, basic usage) is provided via WhatsApp/Call during business hours (9 AM – 6 PM, Monday to Saturday).</p>
-                                    <p>1.3 Bug fixes and security updates are provided free of charge for active subscriptions.</p>
-                                    <p>1.4 Documentation and video tutorials are available in the User Guide section.</p>
+                                    <p>1.1 First-time setup includes a <strong>free user guide session</strong> to help
+                                        you understand the system.</p>
+                                    <p>1.2 Basic technical support (installation, login issues, basic usage) is provided
+                                        via WhatsApp/Call during business hours (9 AM – 6 PM, Monday to Saturday).</p>
+                                    <p>1.3 Bug fixes and security updates are provided free of charge for active
+                                        subscriptions.</p>
+                                    <p>1.4 Documentation is available in the User Guide section.</p>
                                 </div>
                             </div>
 
@@ -281,12 +372,16 @@
                                 <div class="bg-blue-50 p-4 rounded-lg">
                                     <p class="font-semibold text-blue-800">Fee-Based Services:</p>
                                     <ul class="list-disc list-inside text-sm text-blue-700 mt-2 space-y-1">
-                                        <li><strong>Data Recovery:</strong> PKR 2,000 – 10,000 (depending on complexity)</li>
-                                        <li><strong>Custom Feature Development:</strong> Quoted based on requirements</li>
+                                        <li><strong>Data Recovery:</strong> PKR 2,000 – 10,000 (depending on complexity)
+                                        </li>
+                                        <li><strong>Custom Feature Development:</strong> Quoted based on requirements
+                                        </li>
                                         <li><strong>Hardware Integration Setup:</strong> PKR 1,500 – 5,000</li>
-                                        <li><strong>On-site Training (additional sessions):</strong> PKR 3,000 per session</li>
+                                        <li><strong>On-site Training (additional sessions):</strong> PKR 3,000 per
+                                            session</li>
                                         <li><strong>Database Repair/Migration:</strong> PKR 2,000 – 8,000</li>
-                                        <li><strong>Emergency Support (after hours):</strong> PKR 1,500 per incident</li>
+                                        <li><strong>Emergency Support (after hours):</strong> PKR 1,500 per incident
+                                        </li>
                                     </ul>
                                 </div>
                             </div>
@@ -300,8 +395,10 @@
                                         <li>Discounted rates for custom development (15% off)</li>
                                         <li>Priority email support</li>
                                     </ul>
-                                    <p>3.2 Annual maintenance fee of <strong>PKR 5,000</strong> applies for major version updates (e.g., v2.0, v3.0).</p>
-                                    <p>3.3 Without maintenance fee, you will continue using the current version without major updates.</p>
+                                    <p>3.2 Annual maintenance fee of <strong>PKR 5,000</strong> applies for major
+                                        version updates (e.g., v2.0, v3.0).</p>
+                                    <p>3.3 Without maintenance fee, you will continue using the current version without
+                                        major updates.</p>
                                 </div>
                             </div>
                         </div>
@@ -311,7 +408,11 @@
                     <div id="contact" class="bg-white rounded-xl shadow-sm border overflow-hidden">
                         <div class="border-b p-6">
                             <h2 class="text-xl font-bold flex items-center gap-2">
-                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                <svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
                                 Complaint & Contact Information
                             </h2>
                         </div>
@@ -320,13 +421,21 @@
                                 <h3 class="font-semibold text-lg mb-3">Contact Us</h3>
                                 <div class="grid sm:grid-cols-2 gap-4">
                                     <div class="bg-slate-50 p-4 rounded-lg">
-                                        <svg class="h-5 w-5 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                                        <svg class="h-5 w-5 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                        </svg>
                                         <p class="font-medium">WhatsApp / Call</p>
                                         <p class="text-lg font-bold">0329 6121520</p>
                                         <p class="text-xs text-slate-500">9 AM – 6 PM | Monday – Saturday</p>
                                     </div>
                                     <div class="bg-slate-50 p-4 rounded-lg">
-                                        <svg class="h-5 w-5 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+                                        <svg class="h-5 w-5 text-blue-600 mb-2" fill="none" viewBox="0 0 24 24"
+                                            stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                        </svg>
                                         <p class="font-medium">Email</p>
                                         <p class="text-sm">info@brainsees.com</p>
                                         <p class="text-xs text-slate-500">Response within 24 hours</p>
@@ -337,12 +446,15 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">Complaint Resolution Process</h3>
                                 <div class="space-y-3 text-sm text-slate-600">
-                                    <p>1. Submit your complaint via WhatsApp or email with details and screenshots (if applicable).</p>
+                                    <p>1. Submit your complaint via WhatsApp or email with details and screenshots (if
+                                        applicable).</p>
                                     <p>2. You will receive an acknowledgment within 24 hours.</p>
                                     <p>3. Resolution time: 2-5 business days depending on complexity.</p>
                                     <p>4. Escalate to management if not resolved within 7 days.</p>
                                     <div class="bg-green-50 p-3 rounded-lg">
-                                        <p class="text-sm text-green-700"><strong>Legal Jurisdiction:</strong> All disputes shall be governed by the laws of Pakistan and subject to the exclusive jurisdiction of courts in [Your City].</p>
+                                        <p class="text-sm text-green-700"><strong>Legal Jurisdiction:</strong> All
+                                            disputes shall be governed by the laws of Pakistan and subject to the
+                                            exclusive jurisdiction of courts in [Your City].</p>
                                     </div>
                                 </div>
                             </div>
@@ -350,9 +462,14 @@
                             <div>
                                 <h3 class="font-semibold text-lg mb-3">Acknowledgment</h3>
                                 <div class="bg-blue-50/50 p-4 rounded-lg text-center">
-                                    <svg class="h-8 w-8 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <svg class="h-8 w-8 text-blue-600 mx-auto mb-2" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
                                     <p class="text-sm text-slate-700">
-                                        By using Brainsees POS, you acknowledge that you have read, understood, and agree to be bound by these Terms & Conditions and Privacy Policy.
+                                        By using Brainsees POS, you acknowledge that you have read, understood, and
+                                        agree to be bound by these Terms & Conditions and Privacy Policy.
                                     </p>
                                     <p class="text-xs text-slate-500 mt-3">
                                         Last Updated: <span id="footerDate"></span>
@@ -362,8 +479,12 @@
 
                             <!-- Print Button -->
                             <div class="flex justify-end no-print">
-                                <button onclick="window.print()" class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                                <button onclick="window.print()"
+                                    class="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
                                     Print / Save as PDF
                                 </button>
                             </div>
@@ -380,4 +501,5 @@
         document.getElementById('footerDate').innerText = today;
     </script>
 </body>
+
 </html>
