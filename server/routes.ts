@@ -301,12 +301,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // server/routes.ts - Add this endpoint
   app.get("/api/shops/:shopId/subscription-status", async (req: any, res) => {
     try {
       const { shopId } = req.params;
 
-      console.log("Checking subscription status for shop:", shopId);
+      console.log("Fetching full shop details for:", shopId);
 
       // Try to find by shopId (custom ID like "ewe") first
       let shop = await storage.getShopByShopId(shopId);
@@ -316,8 +315,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         shop = await storage.getShop(shopId);
       }
 
-      console.log("Found shop:", shop);
-
       if (!shop) {
         return res.status(404).json({
           success: false,
@@ -325,30 +322,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Return the response in the expected format
+      // Return full shop details including new fields
       res.json({
         success: true,
         data: {
           id: shop.id,
           shopId: shop.shopId,
           name: shop.name,
+          owner: shop.owner,
+          type: shop.type,
+          city: shop.city,
+          location: shop.location,
+          imageUrl: shop.imageUrl,
+          phoneNo: shop.phoneNo, // New field
+          termsPoliciesAccepted: shop.termsPoliciesAccepted, // New field
           subscriptionStatus: shop.subscriptionStatus,
-          expiryDate: shop.expiryDate,
+          subscriptionPlanId: shop.subscriptionPlanId,
+          discount: shop.discount,
           permanentLicense: shop.permanentLicense,
-          isActive: shop.subscriptionStatus === "active",
-          isExpired: shop.subscriptionStatus === "expired",
-          isSuspended: shop.subscriptionStatus === "suspended"
+          expiryDate: shop.expiryDate,
+          storageUsed: shop.storageUsed,
+          storageLimit: shop.storageLimit,
+          totalRevenue: shop.totalRevenue,
+          referral: shop.referral,
+          createdAt: shop.createdAt,
+          updatedAt: shop.updatedAt
         }
       });
     } catch (error) {
-      console.error("Error checking subscription status:", error);
+      console.error("Error fetching shop details:", error);
       res.status(500).json({
         success: false,
-        message: "Failed to check subscription status"
+        message: "Failed to fetch shop details"
       });
     }
   });
-
 
   app.post("/api/shops/:shopId/subscriptions", isAuthenticated, async (req: any, res) => {
     try {
@@ -1461,10 +1469,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
- app.get('/api/policies', (req, res) => {
-  const html = fs.readFileSync(path.join(__dirname, 'policies.html'), 'utf8');
-  res.send(html);
-});
+  app.get('/api/policies', (req, res) => {
+    const html = fs.readFileSync(path.join(__dirname, 'policies.html'), 'utf8');
+    res.send(html);
+  });
 
   const httpServer = createServer(app);
   return httpServer;

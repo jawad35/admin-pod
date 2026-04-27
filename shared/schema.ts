@@ -185,6 +185,8 @@ export const shops = pgTable("shops", {
   city: varchar("city").notNull(),
   location: text("location").notNull(),
   imageUrl: varchar("image_url"),
+  phoneNo: varchar("phone_no"), // New field: Phone number
+  termsPoliciesAccepted: boolean("terms_policies_accepted").default(false), // New field: Terms & Policies acceptance
   subscriptionStatus: subscriptionStatusEnum("subscription_status")
     .notNull()
     .default("active"),
