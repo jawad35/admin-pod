@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { insertShopSchema } from "@shared/schema";
 import { z } from "zod";
 import { useEffect, useState } from "react";
@@ -25,6 +26,8 @@ export const shopFormSchema = insertShopSchema
     ),
     referral: z.string().optional(),
     subscriptionPlanId: z.string().optional(),
+    phoneNo: z.string().optional(),
+    termsPoliciesAccepted: z.boolean().default(false),
   })
   .omit({
     email: true,
@@ -47,6 +50,7 @@ interface Shop {
   name: string;
   owner: string;
   email: string;
+  phoneNo?: string;
   type: string;
   city: string;
   location: string;
@@ -61,6 +65,7 @@ interface Shop {
   storageLimit?: string;
   referral?: string;
   subscriptionPlanId?: string;
+  termsPoliciesAccepted?: boolean;
 }
 
 interface ShopFormProps {
@@ -74,42 +79,39 @@ export default function ShopForm({ shop, onSuccess }: ShopFormProps) {
   const [selectedPlanPrice, setSelectedPlanPrice] = useState<string>("0");
 
   // Fetch subscription plans
-// Fetch subscription plans
-// Fetch subscription plans
-const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery({
-  queryKey: ["/api/subscription-plans"],
-  queryFn: async () => {
-    console.log("1. Starting fetch...");
-    try {
-      const data = await apiRequest("GET", "/api/subscription-plans");
-      console.log("2. Data received:", data);
-      
-      // apiRequest already returns parsed JSON, so data is already the array
-      if (Array.isArray(data)) {
-        console.log("3. Returning array with length:", data.length);
-        return data;
+  const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery({
+    queryKey: ["/api/subscription-plans"],
+    queryFn: async () => {
+      console.log("1. Starting fetch...");
+      try {
+        const data = await apiRequest("GET", "/api/subscription-plans");
+        console.log("2. Data received:", data);
+        
+        if (Array.isArray(data)) {
+          console.log("3. Returning array with length:", data.length);
+          return data;
+        }
+        if (data && data.data && Array.isArray(data.data)) {
+          console.log("3. Returning data.data with length:", data.data.length);
+          return data.data;
+        }
+        
+        console.log("3. Returning empty array");
+        return [];
+      } catch (err) {
+        console.error("Error fetching plans:", err);
+        throw err;
       }
-      if (data && data.data && Array.isArray(data.data)) {
-        console.log("3. Returning data.data with length:", data.data.length);
-        return data.data;
-      }
-      
-      console.log("3. Returning empty array");
-      return [];
-    } catch (err) {
-      console.error("Error fetching plans:", err);
-      throw err;
-    }
-  },
-});
+    },
+  });
 
-  // In the form default values
   const form = useForm<ShopFormData>({
     resolver: zodResolver(shopFormSchema),
     defaultValues: {
       shopId: "",
       name: "",
       owner: "",
+      phoneNo: "",
       type: "retailer",
       city: "",
       location: "",
@@ -122,7 +124,8 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
       storageLimit: "1000",
       totalRevenue: "0",
       referral: "",
-      subscriptionPlanId: null, // Change from "" to null
+      subscriptionPlanId: null,
+      termsPoliciesAccepted: false,
     },
   });
 
@@ -152,6 +155,7 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
         shopId: shop.shopId || "",
         name: shop.name || "",
         owner: shop.owner || "",
+        phoneNo: shop.phoneNo || "",
         type: (shop.type as "retailer" | "salon") || "retailer",
         city: shop.city || "",
         location: shop.location || "",
@@ -165,13 +169,14 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
         totalRevenue: shop.totalRevenue?.toString() || "0",
         referral: shop.referral || "",
         subscriptionPlanId: shop.subscriptionPlanId || "",
+        termsPoliciesAccepted: shop.termsPoliciesAccepted || false,
       });
     } else {
-
       form.reset({
         shopId: "23232",
         name: "",
         owner: "",
+        phoneNo: "",
         type: "retailer",
         city: "",
         location: "",
@@ -185,11 +190,11 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
         totalRevenue: "0",
         referral: "",
         subscriptionPlanId: "",
+        termsPoliciesAccepted: false,
       });
     }
   }, [shop, form]);
 
-  // Add this useEffect to debug
   useEffect(() => {
     console.log("subscriptionPlans changed:", subscriptionPlans);
     if (subscriptionPlans && subscriptionPlans.length > 0) {
@@ -197,7 +202,6 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
     }
   }, [subscriptionPlans]);
 
-  // Update the transformShopDataForAPI function
   const transformShopDataForAPI = (data: ShopFormData) => {
     const transformed = { ...data } as any;
 
@@ -251,6 +255,10 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
 
   const createShopMutation = useMutation({
     mutationFn: async (data: ShopFormData) => {
+      // Validate terms acceptance for new shops
+      if (!data.termsPoliciesAccepted) {
+        throw new Error("You must accept the Terms & Policies to create a shop");
+      }
       const transformedData = transformShopDataForAPI(data);
       const response = await apiRequest("POST", "/api/shops", transformedData);
       return response.json();
@@ -285,11 +293,10 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
   });
 
   useEffect(() => {
-  console.log("subscriptionPlans state:", subscriptionPlans);
-  console.log("plansLoading:", plansLoading);
-  console.log("isSuccess:", isSuccess);
-}, [subscriptionPlans, plansLoading, isSuccess]);
-
+    console.log("subscriptionPlans state:", subscriptionPlans);
+    console.log("plansLoading:", plansLoading);
+    console.log("isSuccess:", isSuccess);
+  }, [subscriptionPlans, plansLoading, isSuccess]);
 
   const updateShopMutation = useMutation({
     mutationFn: async (data: ShopFormData) => {
@@ -306,7 +313,7 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       toast({
         title: "Success! 🎉",
-        description: `Shop "${data.name || data.shopId}" updated successfully`,
+        description: `Shop updated successfully`,
       });
       onSuccess();
     },
@@ -398,6 +405,21 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
         </div>
 
         <div>
+          <Label htmlFor="phoneNo">Phone Number</Label>
+          <Input
+            id="phoneNo"
+            {...form.register("phoneNo")}
+            placeholder="+92 300 1234567"
+            data-testid="input-phone-no"
+          />
+          {form.formState.errors.phoneNo && (
+            <p className="text-sm text-destructive">
+              {form.formState.errors.phoneNo.message}
+            </p>
+          )}
+        </div>
+
+        <div>
           <Label htmlFor="referral">Referral (Optional)</Label>
           <Input
             id="referral"
@@ -442,46 +464,47 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
             </SelectContent>
           </Select>
         </div>
-<div>
-  <Label htmlFor="subscriptionPlanId">Subscription Plan (Optional)</Label>
-  {plansLoading ? (
-    <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
-      Loading plans...
-    </div>
-  ) : isSuccess ? (
-    <Select
-      value={form.watch("subscriptionPlanId") || "none"}
-      onValueChange={(value) => form.setValue("subscriptionPlanId", value === "none" ? null : value)}
-    >
-      <SelectTrigger data-testid="select-subscription-plan">
-        <SelectValue placeholder="Select a plan (optional)" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="none">No plan selected</SelectItem>
-        {subscriptionPlans && subscriptionPlans.length > 0 ? (
-          subscriptionPlans.map((plan: SubscriptionPlan) => (
-            <SelectItem key={plan.id} value={plan.id}>
-              {plan.name} - {plan.planType} - PKR {plan.price}/month
-            </SelectItem>
-          ))
-        ) : (
-          <SelectItem value="no-plans" disabled>
-            No plans available - Create a plan first
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
-  ) : (
-    <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
-      Failed to load plans. Please refresh the page.
-    </div>
-  )}
-  {selectedPlanPrice !== "0" && selectedPlanPrice !== "0.00" && (
-    <p className="text-sm text-green-600 mt-1">
-      Monthly Fee: PKR {selectedPlanPrice}
-    </p>
-  )}
-</div>
+
+        <div>
+          <Label htmlFor="subscriptionPlanId">Subscription Plan (Optional)</Label>
+          {plansLoading ? (
+            <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+              Loading plans...
+            </div>
+          ) : isSuccess ? (
+            <Select
+              value={form.watch("subscriptionPlanId") || "none"}
+              onValueChange={(value) => form.setValue("subscriptionPlanId", value === "none" ? null : value)}
+            >
+              <SelectTrigger data-testid="select-subscription-plan">
+                <SelectValue placeholder="Select a plan (optional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No plan selected</SelectItem>
+                {subscriptionPlans && subscriptionPlans.length > 0 ? (
+                  subscriptionPlans.map((plan: SubscriptionPlan) => (
+                    <SelectItem key={plan.id} value={plan.id}>
+                      {plan.name} - {plan.planType} - PKR {plan.price}/month
+                    </SelectItem>
+                  ))
+                ) : (
+                  <SelectItem value="no-plans" disabled>
+                    No plans available - Create a plan first
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-muted-foreground">
+              Failed to load plans. Please refresh the page.
+            </div>
+          )}
+          {selectedPlanPrice !== "0" && selectedPlanPrice !== "0.00" && (
+            <p className="text-sm text-green-600 mt-1">
+              Monthly Fee: PKR {selectedPlanPrice}
+            </p>
+          )}
+        </div>
 
         <div>
           <Label htmlFor="discount">Discount (%)</Label>
@@ -561,6 +584,29 @@ const { data: subscriptionPlans, isLoading: plansLoading, isSuccess } = useQuery
         />
         <Label htmlFor="permanentLicense">Permanent License</Label>
       </div>
+
+      {/* Terms & Policies Acceptance */}
+      <div className="flex items-start space-x-3 border-t pt-4">
+        <Checkbox
+          id="termsPoliciesAccepted"
+          checked={form.watch("termsPoliciesAccepted")}
+          onCheckedChange={(checked) => form.setValue("termsPoliciesAccepted", checked as boolean)}
+          data-testid="checkbox-terms-accepted"
+        />
+        <div className="space-y-1 leading-none">
+          <Label htmlFor="termsPoliciesAccepted" className="font-semibold">
+            I accept the Terms & Policies {!isEditing && "*"}
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            By accepting, you agree to our terms of service, privacy policy, and data handling practices.
+          </p>
+        </div>
+      </div>
+      {!isEditing && !form.watch("termsPoliciesAccepted") && form.formState.isSubmitted && (
+        <p className="text-sm text-destructive">
+          You must accept the Terms & Policies to create a shop
+        </p>
+      )}
 
       <div className="flex justify-end space-x-2">
         <Button
