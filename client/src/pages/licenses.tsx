@@ -81,7 +81,7 @@ export default function LicenseManagement() {
       });
       if (!res.ok) throw new Error("Failed to fetch licenses");
       const data = await res.json();
-      
+
       const now = new Date();
       return data.map((license: License) => {
         if (license.expires_at && new Date(license.expires_at) < now && license.status === 'active') {
@@ -209,7 +209,8 @@ export default function LicenseManagement() {
     generateLicenseMutation.mutate({
       shopId: selectedShop.id,
       planType,
-      durationDays: actualDurationDays,
+      durationDays: planType === "test" ? null : actualDurationDays,
+      durationMinutes: planType === "test" ? 2 : null,
       adminPin: customPin,
     });
   };
@@ -408,8 +409,7 @@ export default function LicenseManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="test">Test (30 seconds)</SelectItem>
-                      <SelectItem value="trial">Trial (7 days)</SelectItem>
+                      <SelectItem value="test">Test (2 minutes)</SelectItem>
                       <SelectItem value="monthly">Monthly (30 days)</SelectItem>
                       <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
                       <SelectItem value="yearly">Yearly (365 days)</SelectItem>
@@ -481,7 +481,7 @@ export default function LicenseManagement() {
                       </div>
                     </div>
                   )}
-                  
+
                   {generatedPin && (
                     <div>
                       <Label>Admin PIN</Label>
@@ -616,7 +616,7 @@ export default function LicenseManagement() {
           <DialogHeader>
             <DialogTitle>License History for {selectedShop?.name}</DialogTitle>
           </DialogHeader>
-          
+
           <div className="flex justify-between items-center mb-4">
             <div className="flex gap-2">
               <Select value={historyStatusFilter} onValueChange={setHistoryStatusFilter}>
