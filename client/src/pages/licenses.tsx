@@ -182,38 +182,50 @@ export default function LicenseManagement() {
       shop.owner.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleGenerateLicense = () => {
-    if (!selectedShop) {
-      toast({
-        title: "Error",
-        description: "Please select a shop first",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!customPin || customPin.length < 4) {
-      toast({
-        title: "Error",
-        description: "Please enter an admin PIN (minimum 4 digits)",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    let actualDurationDays = durationDays;
-    if (planType === "test") {
-      actualDurationDays = 0.00035;
-    }
-
-    generateLicenseMutation.mutate({
-      shopId: selectedShop.id,
-      planType,
-      durationDays: planType === "test" ? null : actualDurationDays,
-      durationMinutes: planType === "test" ? 2 : null,
-      adminPin: customPin,
+const handleGenerateLicense = () => {
+  if (!selectedShop) {
+    toast({
+      title: "Error",
+      description: "Please select a shop first",
+      variant: "destructive",
     });
-  };
+    return;
+  }
+
+  if (!customPin || customPin.length < 4) {
+    toast({
+      title: "Error",
+      description: "Please enter an admin PIN (minimum 4 digits)",
+      variant: "destructive",
+    });
+    return;
+  }
+
+  let actualDurationDays = null;
+  let durationMinutes = null;
+
+  if (planType === "test") {
+    durationMinutes = 2;
+  } else if (planType === "5min") {
+    durationMinutes = 5;
+  } else if (planType === "monthly") {
+    actualDurationDays = 30;
+  } else if (planType === "quarterly") {
+    actualDurationDays = 90;
+  } else if (planType === "yearly") {
+    actualDurationDays = 365;
+  } else if (planType === "lifetime") {
+    actualDurationDays = null;
+  }
+
+  generateLicenseMutation.mutate({
+    shopId: selectedShop.id,
+    planType,
+    durationDays: actualDurationDays,
+    durationMinutes: durationMinutes,
+    adminPin: customPin,
+  });
+};
 
   const handleChangePin = () => {
     if (!oldPin || !newPin || !confirmPin) {
@@ -404,32 +416,32 @@ export default function LicenseManagement() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Plan Type</Label>
-                  <Select value={planType} onValueChange={setPlanType}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="test">Test (2 minutes)</SelectItem>
-                      <SelectItem value="monthly">Monthly (30 days)</SelectItem>
-                      <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
-                      <SelectItem value="yearly">Yearly (365 days)</SelectItem>
-                      <SelectItem value="lifetime">Lifetime</SelectItem>
-                    </SelectContent>
-                  </Select>
+                 <Select value={planType} onValueChange={setPlanType}>
+  <SelectTrigger>
+    <SelectValue />
+  </SelectTrigger>
+  <SelectContent>
+    <SelectItem value="5min">Test (5 minutes)</SelectItem>
+    <SelectItem value="test">Test (2 minutes)</SelectItem>
+    <SelectItem value="monthly">Monthly (30 days)</SelectItem>
+    <SelectItem value="quarterly">Quarterly (90 days)</SelectItem>
+    <SelectItem value="yearly">Yearly (365 days)</SelectItem>
+    <SelectItem value="lifetime">Lifetime</SelectItem>
+  </SelectContent>
+</Select>
                 </div>
-
-                {planType !== "lifetime" && planType !== "test" && (
-                  <div>
-                    <Label>Duration (Days)</Label>
-                    <Input
-                      type="number"
-                      value={durationDays}
-                      onChange={(e) => setDurationDays(parseInt(e.target.value))}
-                      min={1}
-                      max={365}
-                    />
-                  </div>
-                )}
+{planType !== "lifetime" && planType !== "test" && planType !== "5min" && (
+  <div>
+    <Label>Duration (Days)</Label>
+    <Input
+      type="number"
+      value={durationDays}
+      onChange={(e) => setDurationDays(parseInt(e.target.value))}
+      min={1}
+      max={365}
+    />
+  </div>
+)}
               </div>
 
               <div>
