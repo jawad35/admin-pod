@@ -1243,10 +1243,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
-  // In your server/index.ts
-
-  // Generate license with admin PIN
-  app.post("/api/admin/generate-license-with-pin", isAuthenticated, async (req: any, res) => {
+app.post("/api/admin/generate-license-with-pin", isAuthenticated, async (req: any, res) => {
   try {
     const { shopId, planType, durationDays, durationMinutes, adminPin } = req.body;
 
@@ -1256,6 +1253,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (adminPin.length < 4) {
       return res.status(400).json({ message: "PIN must be at least 4 digits" });
+    }
+
+    // Check if shop already has an active license
+    const existingLicenses = await storage.getLicensesByShopId(shopId);
+    const hasActiveLicense = existingLicenses.some(l => l.status === 'active');
+    
+    if (hasActiveLicense) {
+      return res.status(400).json({ 
+        message: "This shop already has an active license. Please expire or delete the existing license first.",
+        hasActiveLicense: true 
+      });
     }
 
     // Calculate expires_at based on plan type
@@ -1269,13 +1277,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
     }
     else if (planType === "monthly") {
-      expiresAt = new Date(now.setDate(now.getDate() + 30));
+      expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 30);
     }
     else if (planType === "quarterly") {
-      expiresAt = new Date(now.setDate(now.getDate() + 90));
+      expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 90);
     }
     else if (planType === "yearly") {
-      expiresAt = new Date(now.setDate(now.getDate() + 365));
+      expiresAt = new Date(now);
+      expiresAt.setDate(expiresAt.getDate() + 365);
     }
     else if (planType === "lifetime") {
       expiresAt = null; // Never expires
@@ -1290,8 +1301,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       admin_pin: adminPin,
       plan_type: planType,
       duration_days: durationDays,
-      expires_at: expiresAt, // ✅ Set the expiration date
-      status: 'inactive'
+      expires_at: expiresAt,
+      status: 'inactive',
+      created_at: now,
+      updated_at: now
     });
 
     res.json({
@@ -1301,7 +1314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         license_key: license.license_key,
         plan_type: license.plan_type,
         duration_days: license.duration_days,
-        expires_at: expiresAt // Also return it
+        expires_at: expiresAt
       },
       admin_pin: adminPin
     });
@@ -1311,76 +1324,156 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 });
 
-  // Activate license with PIN verification
-  app.post('/api/license/activate-with-pin', async (req, res) => {
+
+  // Delete license endpoint
+  app.delete("/api/admin/licenses/:licenseId", isAuthenticated, async (req: any, res) => {
     try {
-      const { license_key, admin_pin, hardware_id, shop_name, app_version } = req.body;
-      console.log(req.body)
-      if (!license_key || !admin_pin) {
-        return res.json({ success: false, message: 'License key and admin PIN are required' });
+      const { licenseId } = req.params;
+
+      if (!licenseId) {
+        return res.status(400).json({ message: "License ID is required" });
       }
 
-      // Get license from database
-      const license = await storage.getLicenseByKey(license_key);
-
+      // Check if license exists
+      const license = await storage.getLicenseById(licenseId);
       if (!license) {
-        return res.json({ success: false, message: 'Invalid license key' });
+        return res.status(404).json({ message: "License not found" });
       }
 
-      // Verify admin PIN matches
-      if (license.admin_pin !== admin_pin) {
-        return res.json({ success: false, message: 'Invalid admin PIN' });
-      }
-
-      // Check if already activated on another device
-      if (license.hardware_id && license.hardware_id !== hardware_id) {
-        return res.json({ success: false, message: 'License already activated on another computer' });
-      }
-
-      // Check if expired
-      if (license.expires_at) {
-        const expiresAt = new Date(license.expires_at);
-        if (expiresAt < new Date()) {
-          return res.json({ success: false, message: 'License has expired' });
-        }
-      }
-
-      // Get shop details
-      const shop = await storage.getShop(license.shop_id);
-
-      if (!shop) {
-        return res.json({ success: false, message: 'Shop not found' });
-      }
-
-      // Update license with hardware_id
-      await storage.updateLicense(license_key, {
-        hardware_id: hardware_id,
-        activated_at: new Date(),
-        status: 'active'
-      });
-
-      // Calculate expiry date for response
-      let expiryDateForResponse = null;
-      if (license.expires_at) {
-        expiryDateForResponse = new Date(license.expires_at);
-      } else if (license.duration_days) {
-        const calculatedExpiry = new Date();
-        calculatedExpiry.setDate(calculatedExpiry.getDate() + license.duration_days);
-        expiryDateForResponse = calculatedExpiry;
-      }
+      // Delete the license
+      await storage.deleteLicense(licenseId);
 
       res.json({
         success: true,
-        expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
-        plan_type: license.plan_type,
-        shop: shop,
-        message: 'License activated successfully'
+        message: "License deleted successfully"
       });
     } catch (error) {
-      console.error('Activation error:', error);
-      res.status(500).json({ success: false, message: 'Server error' });
+      console.error("Error deleting license:", error);
+      res.status(500).json({ message: "Failed to delete license" });
     }
   });
+
+app.post("/api/admin/licenses/:licenseId/status", isAuthenticated, async (req: any, res) => {
+  try {
+    const { licenseId } = req.params;
+    const { status } = req.body;
+    
+    const license = await storage.updateLicenseStatus(licenseId, status);
+    
+    res.json({
+      success: true,
+      license
+    });
+  } catch (error) {
+    console.error("Error updating license status:", error);
+    res.status(500).json({ message: "Failed to update license status" });
+  }
+});
+  // Get shop subscription status with license info
+app.get("/api/shops/:shopId/subscription-status-with-license", isAuthenticated, async (req: any, res) => {
+  try {
+    const { shopId } = req.params;
+    
+    const shop = await storage.getShop(shopId);
+    if (!shop) {
+      return res.status(404).json({ message: "Shop not found" });
+    }
+    
+    const licenses = await storage.getLicensesByShopId(shopId);
+    const activeLicense = licenses.find(l => l.status === 'active');
+    const expiredLicenses = licenses.filter(l => l.status === 'expired');
+    
+    // Check if license is expired based on expires_at
+    const now = new Date();
+    for (const license of licenses) {
+      if (license.status === 'active' && license.expires_at && new Date(license.expires_at) < now) {
+        await storage.updateLicenseStatus(license.id, 'expired');
+      }
+    }
+    
+    res.json({
+      success: true,
+      shop: {
+        id: shop.id,
+        name: shop.name,
+        shopId: shop.shopId,
+        subscriptionStatus: shop.subscriptionStatus,
+        permanentLicense: shop.permanentLicense,
+        expiryDate: shop.expiryDate
+      },
+      activeLicense: activeLicense ? {
+        id: activeLicense.id,
+        license_key: activeLicense.license_key,
+        plan_type: activeLicense.plan_type,
+        expires_at: activeLicense.expires_at,
+        activated_at: activeLicense.activated_at
+      } : null,
+      hasActiveLicense: !!activeLicense,
+      expiredLicensesCount: expiredLicenses.length
+    });
+  } catch (error) {
+    console.error("Error fetching shop subscription status:", error);
+    res.status(500).json({ message: "Failed to fetch subscription status" });
+  }
+});
+
+  // Activate license with PIN verification
+ app.post("/api/license/activate-with-pin", async (req, res) => {
+    try {
+        const { 
+            license_key, 
+            admin_pin, 
+            hardware_id,
+            computer_name,
+            mac_address,
+            os_platform,
+            os_release,
+            cpu_model,
+            manufacturer,
+            model
+        } = req.body;
+
+        // Find license
+        const license = await storage.getLicenseByKey(license_key);
+        
+        if (!license) {
+            return res.status(404).json({ success: false, message: "License not found" });
+        }
+        
+        if (license.admin_pin !== admin_pin) {
+            return res.status(401).json({ success: false, message: "Invalid admin PIN" });
+        }
+        
+        if (license.status !== 'inactive') {
+            return res.status(400).json({ success: false, message: "License already activated" });
+        }
+        
+        // Update license with activation info
+        const updatedLicense = await storage.updateLicense(license_key, {
+            hardware_id: hardware_id,
+            computer_name: computer_name,
+            mac_address: mac_address,
+            os_platform: os_platform,
+            os_release: os_release,
+            cpu_model: cpu_model,
+            manufacturer: manufacturer,
+            model: model,
+            status: 'active',
+            activated_at: new Date()
+        });
+        
+        res.json({
+            success: true,
+            expiry_date: license.expires_at,
+            plan_type: license.plan_type,
+            shop: license.shop,
+            computer_name: computer_name
+        });
+    } catch (error) {
+        console.error("Activation error:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
 
   // Change admin PIN for a license
   app.post("/api/admin-pin/change", async (req: any, res) => {

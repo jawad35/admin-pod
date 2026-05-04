@@ -119,6 +119,37 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+
+  // Add to DatabaseStorage class in your storage.ts file
+  async deleteLicense(licenseId: string): Promise<void> {
+    // First check if license exists
+    const license = await db.select().from(licenses).where(eq(licenses.id, licenseId)).limit(1);
+    if (!license || license.length === 0) {
+      throw new Error('License not found');
+    }
+
+    // Delete the license
+    await db.delete(licenses).where(eq(licenses.id, licenseId));
+  }
+
+  // Also add this method to get license by ID
+  async getLicenseById(licenseId: string): Promise<any> {
+    const result = await db.select().from(licenses).where(eq(licenses.id, licenseId)).limit(1);
+    return result[0];
+  }
+
+  async updateLicenseStatus(licenseId: string, status: string): Promise<any> {
+    const result = await db
+      .update(licenses)
+      .set({
+        status: status,
+        updated_at: new Date()
+      })
+      .where(eq(licenses.id, licenseId))
+      .returning();
+    return result[0];
+  }
+
   async createLicense(licenseData: any): Promise<any> {
     const result = await db.insert(licenses).values(licenseData).returning();
     return result[0];
@@ -545,41 +576,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Replace the getPaymentHistory method
-async getPaymentHistory(shopId: string, page: number = 1, limit: number = 10): Promise<{ payments: any[], total: number }> {
-  try {
-    const offset = (page - 1) * limit;
-    
-    console.log("getPaymentHistory - shopId:", shopId, "page:", page, "limit:", limit, "offset:", offset);
-    
-    // Get paginated payments using Drizzle
-    const payments = await db
-      .select()
-      .from(paymentHistory)
-      .where(eq(paymentHistory.shopId, shopId))
-      .orderBy(desc(paymentHistory.paymentMonth))
-      .limit(limit)
-      .offset(offset);
-    
-    console.log("Retrieved payments count:", payments.length);
-    
-    // Get total count
-    const result = await db
-      .select({ count: count() })
-      .from(paymentHistory)
-      .where(eq(paymentHistory.shopId, shopId));
-    
-    const total = Number(result[0]?.count || 0);
-    console.log("Total payments count:", total);
-    
-    return {
-      payments: payments,
-      total: total
-    };
-  } catch (error) {
-    console.error("Error in getPaymentHistory:", error);
-    throw error;
+  async getPaymentHistory(shopId: string, page: number = 1, limit: number = 10): Promise<{ payments: any[], total: number }> {
+    try {
+      const offset = (page - 1) * limit;
+
+      console.log("getPaymentHistory - shopId:", shopId, "page:", page, "limit:", limit, "offset:", offset);
+
+      // Get paginated payments using Drizzle
+      const payments = await db
+        .select()
+        .from(paymentHistory)
+        .where(eq(paymentHistory.shopId, shopId))
+        .orderBy(desc(paymentHistory.paymentMonth))
+        .limit(limit)
+        .offset(offset);
+
+      console.log("Retrieved payments count:", payments.length);
+
+      // Get total count
+      const result = await db
+        .select({ count: count() })
+        .from(paymentHistory)
+        .where(eq(paymentHistory.shopId, shopId));
+
+      const total = Number(result[0]?.count || 0);
+      console.log("Total payments count:", total);
+
+      return {
+        payments: payments,
+        total: total
+      };
+    } catch (error) {
+      console.error("Error in getPaymentHistory:", error);
+      throw error;
+    }
   }
-}
 
   // Replace the createPayment method
   async createPayment(paymentData: any): Promise<any> {
@@ -614,40 +645,40 @@ async getPaymentHistory(shopId: string, page: number = 1, limit: number = 10): P
   }
 
   // Update the updatePayment method
-async updatePayment(id: string, paymentData: any): Promise<any> {
-  // Convert snake_case to camelCase if needed
-  const updateData: any = {};
-  
-  if (paymentData.amount !== undefined) updateData.amount = paymentData.amount;
-  if (paymentData.paymentMethod !== undefined) updateData.paymentMethod = paymentData.paymentMethod;
-  if (paymentData.payment_method !== undefined) updateData.paymentMethod = paymentData.payment_method;
-  if (paymentData.collectedBy !== undefined) updateData.collectedBy = paymentData.collectedBy;
-  if (paymentData.collected_by !== undefined) updateData.collectedBy = paymentData.collected_by;
-  if (paymentData.notes !== undefined) updateData.notes = paymentData.notes;
-  if (paymentData.paymentMonth !== undefined) updateData.paymentMonth = paymentData.paymentMonth;
-  if (paymentData.payment_month !== undefined) updateData.paymentMonth = paymentData.payment_month;
-  if (paymentData.paymentDate !== undefined) updateData.paymentDate = paymentData.paymentDate;
-  if (paymentData.payment_date !== undefined) updateData.paymentDate = paymentData.payment_date;
-  
-  updateData.updatedAt = new Date();
-  
-  console.log("Updating payment with data:", updateData);
-  
-  const [payment] = await db
-    .update(paymentHistory)
-    .set(updateData)
-    .where(eq(paymentHistory.id, id))
-    .returning();
-  
-  return payment;
-}
-async getPaymentById(id: string): Promise<any> {
-  const [payment] = await db
-    .select()
-    .from(paymentHistory)
-    .where(eq(paymentHistory.id, id));
-  return payment;
-}
+  async updatePayment(id: string, paymentData: any): Promise<any> {
+    // Convert snake_case to camelCase if needed
+    const updateData: any = {};
+
+    if (paymentData.amount !== undefined) updateData.amount = paymentData.amount;
+    if (paymentData.paymentMethod !== undefined) updateData.paymentMethod = paymentData.paymentMethod;
+    if (paymentData.payment_method !== undefined) updateData.paymentMethod = paymentData.payment_method;
+    if (paymentData.collectedBy !== undefined) updateData.collectedBy = paymentData.collectedBy;
+    if (paymentData.collected_by !== undefined) updateData.collectedBy = paymentData.collected_by;
+    if (paymentData.notes !== undefined) updateData.notes = paymentData.notes;
+    if (paymentData.paymentMonth !== undefined) updateData.paymentMonth = paymentData.paymentMonth;
+    if (paymentData.payment_month !== undefined) updateData.paymentMonth = paymentData.payment_month;
+    if (paymentData.paymentDate !== undefined) updateData.paymentDate = paymentData.paymentDate;
+    if (paymentData.payment_date !== undefined) updateData.paymentDate = paymentData.payment_date;
+
+    updateData.updatedAt = new Date();
+
+    console.log("Updating payment with data:", updateData);
+
+    const [payment] = await db
+      .update(paymentHistory)
+      .set(updateData)
+      .where(eq(paymentHistory.id, id))
+      .returning();
+
+    return payment;
+  }
+  async getPaymentById(id: string): Promise<any> {
+    const [payment] = await db
+      .select()
+      .from(paymentHistory)
+      .where(eq(paymentHistory.id, id));
+    return payment;
+  }
   // Update the deletePayment method
   async deletePayment(id: string): Promise<void> {
     await db
