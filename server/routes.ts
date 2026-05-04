@@ -1247,44 +1247,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Generate license with admin PIN
   app.post("/api/admin/generate-license-with-pin", isAuthenticated, async (req: any, res) => {
-    try {
-      const { shopId, planType, durationDays, adminPin } = req.body;
+  try {
+    const { shopId, planType, durationDays, durationMinutes, adminPin } = req.body;
 
-      if (!shopId || !planType || !adminPin) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      if (adminPin.length < 4) {
-        return res.status(400).json({ message: "PIN must be at least 4 digits" });
-      }
-
-      // Generate license key
-      const licenseKey = `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-
-      const license = await storage.createLicense({
-        license_key: licenseKey,
-        shop_id: shopId,
-        admin_pin: adminPin,
-        plan_type: planType,
-        duration_days: durationDays,
-        status: 'inactive'
-      });
-
-      res.json({
-        success: true,
-        license: {
-          id: license.id,
-          license_key: license.license_key,
-          plan_type: license.plan_type,
-          duration_days: license.duration_days
-        },
-        admin_pin: adminPin
-      });
-    } catch (error) {
-      console.error("Error generating license:", error);
-      res.status(500).json({ message: "Failed to generate license" });
+    if (!shopId || !planType || !adminPin) {
+      return res.status(400).json({ message: "Missing required fields" });
     }
-  });
+
+    if (adminPin.length < 4) {
+      return res.status(400).json({ message: "PIN must be at least 4 digits" });
+    }
+
+    // Calculate expires_at based on plan type
+    let expiresAt = null;
+    const now = new Date();
+    
+    if (planType === "test" && durationMinutes === 2) {
+      expiresAt = new Date(now.getTime() + 2 * 60 * 1000); // 2 minutes
+    } 
+    else if (planType === "5min" && durationMinutes === 5) {
+      expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes
+    }
+    else if (planType === "monthly") {
+      expiresAt = new Date(now.setDate(now.getDate() + 30));
+    }
+    else if (planType === "quarterly") {
+      expiresAt = new Date(now.setDate(now.getDate() + 90));
+    }
+    else if (planType === "yearly") {
+      expiresAt = new Date(now.setDate(now.getDate() + 365));
+    }
+    else if (planType === "lifetime") {
+      expiresAt = null; // Never expires
+    }
+
+    // Generate license key
+    const licenseKey = `LIC-${Date.now()}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+
+    const license = await storage.createLicense({
+      license_key: licenseKey,
+      shop_id: shopId,
+      admin_pin: adminPin,
+      plan_type: planType,
+      duration_days: durationDays,
+      expires_at: expiresAt, // ✅ Set the expiration date
+      status: 'inactive'
+    });
+
+    res.json({
+      success: true,
+      license: {
+        id: license.id,
+        license_key: license.license_key,
+        plan_type: license.plan_type,
+        duration_days: license.duration_days,
+        expires_at: expiresAt // Also return it
+      },
+      admin_pin: adminPin
+    });
+  } catch (error) {
+    console.error("Error generating license:", error);
+    res.status(500).json({ message: "Failed to generate license" });
+  }
+});
 
   // Activate license with PIN verification
   app.post('/api/license/activate-with-pin', async (req, res) => {

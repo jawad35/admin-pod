@@ -222,7 +222,7 @@ const handleGenerateLicense = () => {
     shopId: selectedShop.id,
     planType,
     durationDays: actualDurationDays,
-    durationMinutes: durationMinutes,
+    durationMinutes: durationMinutes, // ✅ Pass this to backend
     adminPin: customPin,
   });
 };
