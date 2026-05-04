@@ -1418,62 +1418,75 @@ app.get("/api/shops/:shopId/subscription-status-with-license", isAuthenticated, 
 });
 
   // Activate license with PIN verification
- app.post("/api/license/activate-with-pin", async (req, res) => {
+  app.post('/api/license/activate-with-pin', async (req, res) => {
     try {
-        const { 
-            license_key, 
-            admin_pin, 
-            hardware_id,
-            computer_name,
-            mac_address,
-            os_platform,
-            os_release,
-            cpu_model,
-            manufacturer,
-            model
-        } = req.body;
+      const { license_key, admin_pin, hardware_id, shop_name, app_version } = req.body;
+      console.log(req.body)
+      if (!license_key || !admin_pin) {
+        return res.json({ success: false, message: 'License key and admin PIN are required' });
+      }
 
-        // Find license
-        const license = await storage.getLicenseByKey(license_key);
-        
-        if (!license) {
-            return res.status(404).json({ success: false, message: "License not found" });
+      // Get license from database
+      const license = await storage.getLicenseByKey(license_key);
+
+      if (!license) {
+        return res.json({ success: false, message: 'Invalid license key' });
+      }
+
+      // Verify admin PIN matches
+      if (license.admin_pin !== admin_pin) {
+        return res.json({ success: false, message: 'Invalid admin PIN' });
+      }
+
+      // Check if already activated on another device
+      if (license.hardware_id && license.hardware_id !== hardware_id) {
+        return res.json({ success: false, message: 'License already activated on another computer' });
+      }
+
+      // Check if expired
+      if (license.expires_at) {
+        const expiresAt = new Date(license.expires_at);
+        if (expiresAt < new Date()) {
+          return res.json({ success: false, message: 'License has expired' });
         }
-        
-        if (license.admin_pin !== admin_pin) {
-            return res.status(401).json({ success: false, message: "Invalid admin PIN" });
-        }
-        
-        if (license.status !== 'inactive') {
-            return res.status(400).json({ success: false, message: "License already activated" });
-        }
-        
-        // Update license with activation info
-        const updatedLicense = await storage.updateLicense(license_key, {
-            hardware_id: hardware_id,
-            computer_name: computer_name,
-            mac_address: mac_address,
-            os_platform: os_platform,
-            os_release: os_release,
-            cpu_model: cpu_model,
-            manufacturer: manufacturer,
-            model: model,
-            status: 'active',
-            activated_at: new Date()
-        });
-        
-        res.json({
-            success: true,
-            expiry_date: license.expires_at,
-            plan_type: license.plan_type,
-            shop: license.shop,
-            computer_name: computer_name
-        });
+      }
+
+      // Get shop details
+      const shop = await storage.getShop(license.shop_id);
+
+      if (!shop) {
+        return res.json({ success: false, message: 'Shop not found' });
+      }
+
+      // Update license with hardware_id
+      await storage.updateLicense(license_key, {
+        hardware_id: hardware_id,
+        activated_at: new Date(),
+        status: 'active'
+      });
+
+      // Calculate expiry date for response
+      let expiryDateForResponse = null;
+      if (license.expires_at) {
+        expiryDateForResponse = new Date(license.expires_at);
+      } else if (license.duration_days) {
+        const calculatedExpiry = new Date();
+        calculatedExpiry.setDate(calculatedExpiry.getDate() + license.duration_days);
+        expiryDateForResponse = calculatedExpiry;
+      }
+
+      res.json({
+        success: true,
+        expiry_date: expiryDateForResponse ? expiryDateForResponse.toISOString() : null,
+        plan_type: license.plan_type,
+        shop: shop,
+        message: 'License activated successfully'
+      });
     } catch (error) {
-        console.error("Activation error:", error);
-        res.status(500).json({ success: false, message: error.message });
+      console.error('Activation error:', error);
+      res.status(500).json({ success: false, message: 'Server error' });
     }
-});
+  });
 
   // Change admin PIN for a license
   app.post("/api/admin-pin/change", async (req: any, res) => {
